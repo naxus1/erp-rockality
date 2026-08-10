@@ -16,13 +16,13 @@ develop ─────────────── integración (aquí se jun
 
 ## Reglas
 
-| Rama | Propósito | Push directo | Merge desde |
-|---|---|---|---|
-| `main` | Producción — lo que está en AWS | ❌ Prohibido | Solo desde `develop` via PR |
-| `develop` | Integración — código listo para release | ❌ Prohibido | Desde `feature/*`, `fix/*`, `chore/*` via PR |
-| `feature/*` | Trabajo en una funcionalidad | ✅ Permitido | — |
-| `fix/*` | Corrección de un bug | ✅ Permitido | — |
-| `chore/*` | Mantenimiento sin lógica nueva | ✅ Permitido | — |
+| Rama        | Propósito                               | Push directo | Merge desde                                  |
+| ----------- | --------------------------------------- | ------------ | -------------------------------------------- |
+| `main`      | Producción — lo que está en AWS         | ❌ Prohibido | Solo desde `develop` via PR                  |
+| `develop`   | Integración — código listo para release | ❌ Prohibido | Desde `feature/*`, `fix/*`, `chore/*` via PR |
+| `feature/*` | Trabajo en una funcionalidad            | ✅ Permitido | —                                            |
+| `fix/*`     | Corrección de un bug                    | ✅ Permitido | —                                            |
+| `chore/*`   | Mantenimiento sin lógica nueva          | ✅ Permitido | —                                            |
 
 ## Protección configurada (GitHub Rulesets)
 
@@ -53,13 +53,13 @@ docs: documentar API de reportes
 test: agregar tests para servicio de gastos
 ```
 
-| Prefijo | Uso |
-|---|---|
-| `feat:` | Nueva funcionalidad |
-| `fix:` | Corrección de bug |
-| `chore:` | Mantenimiento (no cambia funcionalidad) |
-| `docs:` | Documentación |
-| `test:` | Tests |
+| Prefijo     | Uso                                          |
+| ----------- | -------------------------------------------- |
+| `feat:`     | Nueva funcionalidad                          |
+| `fix:`      | Corrección de bug                            |
+| `chore:`    | Mantenimiento (no cambia funcionalidad)      |
+| `docs:`     | Documentación                                |
+| `test:`     | Tests                                        |
 | `refactor:` | Refactorización sin cambio de comportamiento |
 
 ## Flujo de trabajo paso a paso

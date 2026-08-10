@@ -11,8 +11,8 @@ Documentación interna del proyecto ERP para el gimnasio Rockality.
 
 ## Quick Links
 
-| Recurso | URL |
-|---|---|
-| Repositorio | https://github.com/naxus1/erp-rockality |
-| Board (próximamente) | — |
-| Deploy (próximamente) | — |
+| Recurso               | URL                                     |
+| --------------------- | --------------------------------------- |
+| Repositorio           | https://github.com/naxus1/erp-rockality |
+| Board (próximamente)  | —                                       |
+| Deploy (próximamente) | —                                       |
