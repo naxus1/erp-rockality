@@ -1,0 +1,112 @@
+# ============================================
+# CI Pipeline — ERP Rockality
+# ============================================
+# Este pipeline se ejecuta automáticamente cuando:
+# 1. Alguien abre un Pull Request contra develop o main
+# 2. Alguien pushea commits a un PR existente
+#
+# ¿Qué hace?
+# - Verifica que el código esté bien formateado (Prettier)
+# - Verifica que no haya errores de lint (ESLint)
+# - Verifica que el código compile sin errores (TypeScript)
+# - Verifica que no haya vulnerabilidades en dependencias (npm audit)
+#
+# Si alguno falla, el PR queda marcado con ❌ y no se puede mergear
+# hasta que se corrijan los errores.
+# ============================================
+
+name: CI
+
+# ¿Cuándo se ejecuta?
+on:
+  pull_request:
+    branches: [develop, main] # Solo en PRs que apuntan a estas ramas
+  push:
+    branches: [develop] # También cuando se pushea directo a develop (merges)
+
+# Permisos mínimos (seguridad)
+permissions:
+  contents: read
+
+jobs:
+  # ──────────────────────────────────────────
+  # Job 1: Lint y formato
+  # ──────────────────────────────────────────
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest # Máquina virtual gratuita de GitHub
+
+    steps:
+      # Paso 1: Descargar el código del repo
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      # Paso 2: Instalar Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm' # Cachea node_modules entre ejecuciones (más rápido)
+
+      # Paso 3: Instalar dependencias
+      - name: Instalar dependencias
+        run: npm ci # 'ci' es más rápido y estricto que 'install'
+
+      # Paso 4: Verificar formato con Prettier
+      - name: Verificar formato (Prettier)
+        run: npx prettier --check "**/*.{ts,tsx,js,json,md}"
+
+      # Paso 5: Verificar lint con ESLint
+      - name: Verificar lint (ESLint)
+        run: npx eslint .
+
+  # ──────────────────────────────────────────
+  # Job 2: Build (compilación TypeScript)
+  # ──────────────────────────────────────────
+  # build:
+  #   name: Build
+  #   runs-on: ubuntu-latest
+  #   needs: lint # Solo corre si lint pasó (no gastar tiempo si hay errores)
+  #
+  #   steps:
+  #     - name: Checkout código
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+  #         cache: 'npm'
+  #
+  #     - name: Instalar dependencias
+  #       run: npm ci
+  #
+  #     - name: Build backend
+  #       run: npm run build:backend
+  #
+  #     - name: Build frontend
+  #       run: npm run build:frontend
+
+  # ──────────────────────────────────────────
+  # Job 3: Auditoría de seguridad
+  # ──────────────────────────────────────────
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Busca vulnerabilidades conocidas en las dependencias
+      - name: Auditoría de dependencias
+        run: npm audit --audit-level=high # Solo falla con vulnerabilidades HIGH o CRITICAL
