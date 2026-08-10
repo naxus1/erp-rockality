@@ -1,15 +1,13 @@
 /**
- * ROUTES — Definición de endpoints HTTP
+ * ROUTES — Router principal
  *
- * Aquí se registran las rutas de la API y se conectan con los controllers.
- * Cada módulo tiene su propio archivo de rutas:
- *   - productos.routes.ts
- *   - ventas.routes.ts
- *   - gastos.routes.ts
- *   - clientes.routes.ts
- *   - reportes.routes.ts
+ * Registra todas las rutas del API bajo /api.
  */
 import { Router } from 'express';
+
+import categoriasProductoRoutes from './categorias-producto.routes.js';
+import productosRoutes from './productos.routes.js';
+import clientesRoutes from './clientes.routes.js';
 
 const router = Router();
 
@@ -17,5 +15,10 @@ const router = Router();
 router.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Módulos
+router.use('/categorias-producto', categoriasProductoRoutes);
+router.use('/productos', productosRoutes);
+router.use('/clientes', clientesRoutes);
 
 export default router;
