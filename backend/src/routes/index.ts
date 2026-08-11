@@ -5,6 +5,7 @@
  */
 import { Router } from 'express';
 
+import catalogosRoutes from './catalogos.routes.js';
 import categoriasProductoRoutes from './categorias-producto.routes.js';
 import productosRoutes from './productos.routes.js';
 import clientesRoutes from './clientes.routes.js';
@@ -17,6 +18,7 @@ router.get('/health', (_req, res) => {
 });
 
 // Módulos
+router.use('/catalogos', catalogosRoutes);
 router.use('/categorias-producto', categoriasProductoRoutes);
 router.use('/productos', productosRoutes);
 router.use('/clientes', clientesRoutes);

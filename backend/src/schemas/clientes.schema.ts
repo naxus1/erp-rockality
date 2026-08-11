@@ -11,8 +11,8 @@ export const createClienteSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha: YYYY-MM-DD')
     .optional(),
   direccion: z.string().max(200).optional(),
-  ciudad: z.string().max(100).optional(),
-  sexo: z.enum(['M', 'F', 'Otro']).optional(),
+  ciudad_id: z.number().int().positive().optional(),
+  sexo_id: z.number().int().positive().optional(),
   canal_captacion_id: z.number().int().positive().optional(),
   consentimiento_datos: z.number().int().min(0).max(1).optional(),
   notas: z.string().max(1000).optional(),
@@ -29,8 +29,8 @@ export const updateClienteSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha: YYYY-MM-DD')
     .optional(),
   direccion: z.string().max(200).optional(),
-  ciudad: z.string().max(100).optional(),
-  sexo: z.enum(['M', 'F', 'Otro']).optional(),
+  ciudad_id: z.number().int().positive().optional(),
+  sexo_id: z.number().int().positive().optional(),
   canal_captacion_id: z.number().int().positive().optional(),
   consentimiento_datos: z.number().int().min(0).max(1).optional(),
   notas: z.string().max(1000).optional(),
