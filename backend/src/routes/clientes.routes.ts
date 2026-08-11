@@ -12,7 +12,7 @@ router.get('/', (req: Request, res: Response) => {
   res.json({ success: true, data: clientes });
 });
 
-// GET /api/clientes/buscar?q=texto — Buscar por nombre/teléfono/email
+// GET /api/clientes/buscar?q=texto — Buscar por nombre/apellidos/teléfono/cédula
 router.get('/buscar', (req: Request, res: Response) => {
   const query = (req.query.q as string) || '';
   if (query.length < 2) {
@@ -23,9 +23,9 @@ router.get('/buscar', (req: Request, res: Response) => {
   res.json({ success: true, data: clientes });
 });
 
-// GET /api/clientes/:id — Obtener uno
-router.get('/:id', (req: Request, res: Response) => {
-  const cliente = repo.findById(Number(req.params.id));
+// GET /api/clientes/:cedula — Obtener uno por cédula
+router.get('/:cedula', (req: Request, res: Response) => {
+  const cliente = repo.findByCedula(req.params.cedula);
   if (!cliente) {
     res.status(404).json({ success: false, error: 'Cliente no encontrado' });
     return;
@@ -35,13 +35,19 @@ router.get('/:id', (req: Request, res: Response) => {
 
 // POST /api/clientes — Crear
 router.post('/', validate(createClienteSchema), (req: Request, res: Response) => {
+  // Verificar que la cédula no existe
+  const existing = repo.findByCedula(req.body.cedula);
+  if (existing) {
+    res.status(409).json({ success: false, error: 'Ya existe un cliente con esa cédula' });
+    return;
+  }
   const cliente = repo.create(req.body);
   res.status(201).json({ success: true, data: cliente });
 });
 
-// PUT /api/clientes/:id — Editar
-router.put('/:id', validate(updateClienteSchema), (req: Request, res: Response) => {
-  const cliente = repo.update(Number(req.params.id), req.body);
+// PUT /api/clientes/:cedula — Editar
+router.put('/:cedula', validate(updateClienteSchema), (req: Request, res: Response) => {
+  const cliente = repo.update(req.params.cedula, req.body);
   if (!cliente) {
     res.status(404).json({ success: false, error: 'Cliente no encontrado' });
     return;
@@ -49,9 +55,9 @@ router.put('/:id', validate(updateClienteSchema), (req: Request, res: Response) 
   res.json({ success: true, data: cliente });
 });
 
-// DELETE /api/clientes/:id — Desactivar (soft delete)
-router.delete('/:id', (req: Request, res: Response) => {
-  const deleted = repo.deactivate(Number(req.params.id));
+// DELETE /api/clientes/:cedula — Desactivar (soft delete)
+router.delete('/:cedula', (req: Request, res: Response) => {
+  const deleted = repo.deactivate(req.params.cedula);
   if (!deleted) {
     res.status(404).json({ success: false, error: 'Cliente no encontrado' });
     return;
@@ -59,9 +65,9 @@ router.delete('/:id', (req: Request, res: Response) => {
   res.json({ success: true, message: 'Cliente desactivado' });
 });
 
-// POST /api/clientes/:id/anonimizar — Derecho de supresión (Habeas Data)
-router.post('/:id/anonimizar', (req: Request, res: Response) => {
-  const result = repo.anonimizar(Number(req.params.id));
+// POST /api/clientes/:cedula/anonimizar — Derecho de supresión (Habeas Data)
+router.post('/:cedula/anonimizar', (req: Request, res: Response) => {
+  const result = repo.anonimizar(req.params.cedula);
   if (!result) {
     res.status(404).json({ success: false, error: 'Cliente no encontrado' });
     return;
