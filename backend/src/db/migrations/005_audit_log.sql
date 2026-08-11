@@ -7,7 +7,7 @@ CREATE TABLE usuarios_sistema (
   id TEXT PRIMARY KEY,                             -- UUID o username (ej: "admin", "gerente")
   nombre TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
-  rol TEXT NOT NULL CHECK (rol IN ('admin', 'gerente')),
+  rol TEXT NOT NULL CHECK (rol IN ('admin', 'gerente', 'vendedor')),
   activo INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -15,7 +15,8 @@ CREATE TABLE usuarios_sistema (
 -- Datos iniciales (los 2 usuarios del gimnasio)
 INSERT INTO usuarios_sistema (id, nombre, email, rol) VALUES
   ('admin', 'Administrador', 'admin@rockality.com', 'admin'),
-  ('gerente', 'Gerente', 'gerente@rockality.com', 'gerente');
+  ('gerente', 'Gerente', 'gerente@rockality.com', 'gerente'),
+  ('vendedor', 'Vendedor', 'vendedor@rockality.com', 'vendedor');
 
 -- Auditoría de negocio (quién hizo qué y cuándo)
 CREATE TABLE audit_log (
