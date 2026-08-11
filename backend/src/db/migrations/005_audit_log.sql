@@ -1,24 +1,38 @@
 -- ============================================
--- Migración 005: Tabla de auditoría
+-- Migración 005: Usuarios del sistema y Auditoría
 -- ============================================
--- Registra quién hizo qué y cuándo (trazabilidad de negocio).
--- Ejemplos: quién anuló una venta, quién cambió un precio,
--- quién editó datos de un cliente.
 
+-- Usuarios internos del sistema (admin, gerente, entrenador)
+CREATE TABLE usuarios_sistema (
+  id TEXT PRIMARY KEY,                             -- UUID o username (ej: "admin", "gerente")
+  nombre TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  rol TEXT NOT NULL CHECK (rol IN ('admin', 'gerente')),
+  activo INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Datos iniciales (los 2 usuarios del gimnasio)
+INSERT INTO usuarios_sistema (id, nombre, email, rol) VALUES
+  ('admin', 'Administrador', 'admin@rockality.com', 'admin'),
+  ('gerente', 'Gerente', 'gerente@rockality.com', 'gerente');
+
+-- Auditoría de negocio (quién hizo qué y cuándo)
 CREATE TABLE audit_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  usuario_id TEXT NOT NULL,                        -- ID del usuario que realizó la acción
+  usuario_id TEXT NOT NULL,                        -- FK lógica a usuarios_sistema
   accion TEXT NOT NULL CHECK (accion IN ('crear', 'editar', 'eliminar', 'anular')),
-  entidad TEXT NOT NULL,                           -- nombre de la tabla afectada (venta, producto, etc)
-  entidad_id INTEGER NOT NULL,                     -- ID del registro afectado
-  datos_anteriores TEXT,                           -- JSON con el estado anterior (null si es crear)
-  datos_nuevos TEXT,                               -- JSON con el estado nuevo (null si es eliminar)
+  entidad TEXT NOT NULL,                           -- tabla afectada (venta, producto, cliente, etc)
+  entidad_id TEXT NOT NULL,                        -- PK del registro (TEXT para soportar cédula, SKU, NIT)
+  datos_anteriores TEXT,                           -- JSON snapshot antes del cambio
+  datos_nuevos TEXT,                               -- JSON snapshot después del cambio
   ip_origen TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Índices para consultas de auditoría
+-- Índices
 CREATE INDEX idx_audit_usuario ON audit_log(usuario_id);
 CREATE INDEX idx_audit_entidad ON audit_log(entidad, entidad_id);
 CREATE INDEX idx_audit_fecha ON audit_log(created_at);
 CREATE INDEX idx_audit_accion ON audit_log(accion);
+CREATE INDEX idx_usuarios_rol ON usuarios_sistema(rol);
