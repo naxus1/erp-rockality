@@ -9,9 +9,10 @@ import catalogosRoutes from './catalogos.routes.js';
 import categoriasProductoRoutes from './categorias-producto.routes.js';
 import productosRoutes from './productos.routes.js';
 import clientesRoutes from './clientes.routes.js';
-import proveedoresRoutes from './proveedores.routes.js';
-import pagosRoutes from './pagos.routes.js';
+import tercerosRoutes from './terceros.routes.js';
 import ventasRoutes from './ventas.routes.js';
+import pagosRoutes from './pagos.routes.js';
+import gastosRoutes from './gastos.routes.js';
 
 const router = Router();
 
@@ -25,8 +26,9 @@ router.use('/catalogos', catalogosRoutes);
 router.use('/categorias-producto', categoriasProductoRoutes);
 router.use('/productos', productosRoutes);
 router.use('/clientes', clientesRoutes);
-router.use('/proveedores', proveedoresRoutes);
-router.use('/pagos', pagosRoutes);
+router.use('/terceros', tercerosRoutes);
 router.use('/ventas', ventasRoutes);
+router.use('/pagos', pagosRoutes);
+router.use('/gastos', gastosRoutes);
 
 export default router;
