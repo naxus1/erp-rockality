@@ -44,6 +44,34 @@ router.get('/metodos-pago', (_req: Request, res: Response) => {
   res.json({ success: true, data });
 });
 
+// GET /api/catalogos/tipos-tercero
+router.get('/tipos-tercero', (_req: Request, res: Response) => {
+  const db = getDatabase();
+  const data = db.prepare('SELECT * FROM tipos_tercero ORDER BY id').all();
+  res.json({ success: true, data });
+});
+
+// GET /api/catalogos/gerencias
+router.get('/gerencias', (_req: Request, res: Response) => {
+  const db = getDatabase();
+  const data = db.prepare('SELECT * FROM gerencias ORDER BY nombre').all();
+  res.json({ success: true, data });
+});
+
+// GET /api/catalogos/tipos-gasto
+router.get('/tipos-gasto', (_req: Request, res: Response) => {
+  const db = getDatabase();
+  const data = db.prepare('SELECT * FROM tipos_gasto ORDER BY nombre').all();
+  res.json({ success: true, data });
+});
+
+// GET /api/catalogos/categorias-gasto
+router.get('/categorias-gasto', (_req: Request, res: Response) => {
+  const db = getDatabase();
+  const data = db.prepare('SELECT * FROM categorias_gasto ORDER BY nombre').all();
+  res.json({ success: true, data });
+});
+
 // POST /api/catalogos/ciudades — Agregar ciudad nueva
 router.post('/ciudades', (req: Request, res: Response) => {
   const { nombre } = req.body;

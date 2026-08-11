@@ -106,11 +106,22 @@ CREATE TABLE clientes (
   FOREIGN KEY (canal_captacion_id) REFERENCES canales_captacion(id)
 );
 
--- ── Proveedores ───────────────────────────────────────────
+-- ── Terceros (proveedores, empleados, empresas de servicios) ──
 
-CREATE TABLE proveedores (
-  nit TEXT PRIMARY KEY,
-  nombre_empresa TEXT NOT NULL,
+CREATE TABLE tipos_tercero (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nombre TEXT NOT NULL UNIQUE
+);
+
+INSERT INTO tipos_tercero (nombre) VALUES
+  ('Proveedor'),
+  ('Empleado'),
+  ('Empresa de servicios');
+
+CREATE TABLE terceros (
+  nit TEXT PRIMARY KEY,                            -- Cédula o NIT
+  nombre TEXT NOT NULL,                            -- Nombre persona o empresa
+  tipo_tercero_id INTEGER NOT NULL,
   direccion TEXT,
   telefono TEXT,
   nombre_contacto TEXT,
@@ -119,7 +130,8 @@ CREATE TABLE proveedores (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   created_by TEXT,
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_by TEXT
+  updated_by TEXT,
+  FOREIGN KEY (tipo_tercero_id) REFERENCES tipos_tercero(id)
 );
 
 -- ── Productos ─────────────────────────────────────────────
@@ -129,7 +141,7 @@ CREATE TABLE productos (
   nombre TEXT NOT NULL,
   categoria_id INTEGER NOT NULL,
   unidad_medida_id INTEGER NOT NULL,
-  proveedor_nit TEXT,
+  proveedor_nit TEXT,                              -- FK a tercero (tipo Proveedor)
   precio_venta INTEGER NOT NULL,                   -- centavos COP
   precio_costo INTEGER NOT NULL,                   -- centavos COP
   stock_actual INTEGER NOT NULL DEFAULT 0,         -- disminuye con ventas
@@ -143,7 +155,7 @@ CREATE TABLE productos (
   updated_by TEXT,
   FOREIGN KEY (categoria_id) REFERENCES categorias_producto(id),
   FOREIGN KEY (unidad_medida_id) REFERENCES unidades_medida(id),
-  FOREIGN KEY (proveedor_nit) REFERENCES proveedores(nit)
+  FOREIGN KEY (proveedor_nit) REFERENCES terceros(nit)
 );
 
 -- ── Índices ───────────────────────────────────────────────
@@ -151,7 +163,8 @@ CREATE TABLE productos (
 CREATE INDEX idx_clientes_nombre ON clientes(nombre, apellidos);
 CREATE INDEX idx_clientes_telefono ON clientes(telefono);
 CREATE INDEX idx_clientes_ciudad ON clientes(ciudad_id);
-CREATE INDEX idx_proveedores_nombre ON proveedores(nombre_empresa);
+CREATE INDEX idx_terceros_nombre ON terceros(nombre);
+CREATE INDEX idx_terceros_tipo ON terceros(tipo_tercero_id);
 CREATE INDEX idx_productos_categoria ON productos(categoria_id);
 CREATE INDEX idx_productos_proveedor ON productos(proveedor_nit);
 CREATE INDEX idx_productos_activo ON productos(activo);

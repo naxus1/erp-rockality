@@ -67,11 +67,11 @@ const SELECT_PRODUCTO = `
     cp.nombre as categoria_nombre,
     um.nombre as unidad_medida_nombre,
     um.abreviatura as unidad_medida_abreviatura,
-    prov.nombre_empresa as proveedor_nombre
+    prov.nombre as proveedor_nombre
   FROM productos p
   JOIN categorias_producto cp ON p.categoria_id = cp.id
   JOIN unidades_medida um ON p.unidad_medida_id = um.id
-  LEFT JOIN proveedores prov ON p.proveedor_nit = prov.nit
+  LEFT JOIN terceros prov ON p.proveedor_nit = prov.nit
 `;
 
 export function findAll(includeInactive = false): ProductoConRelaciones[] {
