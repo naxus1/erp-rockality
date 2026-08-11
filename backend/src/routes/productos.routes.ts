@@ -24,9 +24,9 @@ router.get('/categoria/:categoriaId', (req: Request, res: Response) => {
   res.json({ success: true, data: productos });
 });
 
-// GET /api/productos/:id — Obtener uno
-router.get('/:id', (req: Request, res: Response) => {
-  const producto = repo.findById(Number(req.params.id));
+// GET /api/productos/:sku — Obtener uno por SKU
+router.get('/:sku', (req: Request, res: Response) => {
+  const producto = repo.findBySku(req.params.sku);
   if (!producto) {
     res.status(404).json({ success: false, error: 'Producto no encontrado' });
     return;
@@ -36,13 +36,18 @@ router.get('/:id', (req: Request, res: Response) => {
 
 // POST /api/productos — Crear
 router.post('/', validate(createProductoSchema), (req: Request, res: Response) => {
+  const existing = repo.findBySku(req.body.sku);
+  if (existing) {
+    res.status(409).json({ success: false, error: 'Ya existe un producto con ese SKU' });
+    return;
+  }
   const producto = repo.create(req.body);
   res.status(201).json({ success: true, data: producto });
 });
 
-// PUT /api/productos/:id — Editar
-router.put('/:id', validate(updateProductoSchema), (req: Request, res: Response) => {
-  const producto = repo.update(Number(req.params.id), req.body);
+// PUT /api/productos/:sku — Editar
+router.put('/:sku', validate(updateProductoSchema), (req: Request, res: Response) => {
+  const producto = repo.update(req.params.sku, req.body);
   if (!producto) {
     res.status(404).json({ success: false, error: 'Producto no encontrado' });
     return;
@@ -50,9 +55,9 @@ router.put('/:id', validate(updateProductoSchema), (req: Request, res: Response)
   res.json({ success: true, data: producto });
 });
 
-// DELETE /api/productos/:id — Desactivar (soft delete)
-router.delete('/:id', (req: Request, res: Response) => {
-  const deleted = repo.deactivate(Number(req.params.id));
+// DELETE /api/productos/:sku — Desactivar (soft delete)
+router.delete('/:sku', (req: Request, res: Response) => {
+  const deleted = repo.deactivate(req.params.sku);
   if (!deleted) {
     res.status(404).json({ success: false, error: 'Producto no encontrado' });
     return;
