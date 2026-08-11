@@ -56,6 +56,8 @@ CREATE TABLE gastos (
   fecha_pago TEXT NOT NULL DEFAULT (date('now')),  -- cuándo se pagó realmente
   metodo_pago_id INTEGER,                          -- FK: cómo se pagó
   referencia_pago TEXT,                            -- factura, recibo, etc
+  estado TEXT NOT NULL DEFAULT 'registrado' CHECK (estado IN ('registrado', 'anulado')),
+  recurrente INTEGER NOT NULL DEFAULT 0,           -- 1 = gasto fijo que se repite cada mes
   notas TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   created_by TEXT,
@@ -73,3 +75,4 @@ CREATE INDEX idx_gastos_tercero ON gastos(tercero_nit);
 CREATE INDEX idx_gastos_gerencia ON gastos(gerencia_id);
 CREATE INDEX idx_gastos_tipo ON gastos(tipo_gasto_id);
 CREATE INDEX idx_gastos_categoria ON gastos(categoria_gasto_id);
+CREATE INDEX idx_gastos_estado ON gastos(estado);
