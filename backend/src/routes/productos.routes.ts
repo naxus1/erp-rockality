@@ -36,13 +36,20 @@ router.get('/:sku', (req: Request, res: Response) => {
 
 // POST /api/productos — Crear
 router.post('/', validate(createProductoSchema), (req: Request, res: Response) => {
-  const existing = repo.findBySku(req.body.sku);
-  if (existing) {
-    res.status(409).json({ success: false, error: 'Ya existe un producto con ese SKU' });
-    return;
+  if (req.body.sku) {
+    const existing = repo.findBySku(req.body.sku);
+    if (existing) {
+      res.status(409).json({ success: false, error: 'Ya existe un producto con ese SKU' });
+      return;
+    }
   }
-  const producto = repo.create(req.body);
-  res.status(201).json({ success: true, data: producto });
+  try {
+    const producto = repo.create(req.body);
+    res.status(201).json({ success: true, data: producto });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Error creando producto';
+    res.status(400).json({ success: false, error: message });
+  }
 });
 
 // PUT /api/productos/:sku — Editar

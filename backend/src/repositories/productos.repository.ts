@@ -33,7 +33,7 @@ export interface ProductoConRelaciones extends Producto {
 }
 
 export interface CreateProductoData {
-  sku: string;
+  sku?: string; // opcional: se autogenera si no se envía
   nombre: string;
   categoria_id: number;
   unidad_medida_id: number;
@@ -89,6 +89,25 @@ export function findBySku(sku: string): ProductoConRelaciones | undefined {
     | undefined;
 }
 
+/** Genera SKU automático: PREFIJO-001, PREFIJO-002, etc */
+export function generarSku(categoriaId: number): string {
+  const db = getDatabase();
+
+  // Obtener prefijo de la categoría
+  const categoria = db
+    .prepare('SELECT prefijo_sku FROM categorias_producto WHERE id = ?')
+    .get(categoriaId) as { prefijo_sku: string } | undefined;
+  if (!categoria) throw new Error('Categoría no encontrada');
+
+  // Contar productos existentes en esa categoría para el consecutivo
+  const count = db
+    .prepare('SELECT COUNT(*) as total FROM productos WHERE categoria_id = ?')
+    .get(categoriaId) as { total: number };
+  const consecutivo = String(count.total + 1).padStart(3, '0');
+
+  return `${categoria.prefijo_sku}-${consecutivo}`;
+}
+
 export function findByCategoria(categoriaId: number): ProductoConRelaciones[] {
   const db = getDatabase();
   return db
@@ -107,11 +126,13 @@ export function findStockBajo(): ProductoConRelaciones[] {
 
 export function create(data: CreateProductoData): ProductoConRelaciones {
   const db = getDatabase();
+  const sku = data.sku || generarSku(data.categoria_id);
+
   db.prepare(
     `INSERT INTO productos (sku, nombre, categoria_id, unidad_medida_id, proveedor_nit, precio_venta, precio_costo, stock_actual, stock_minimo, aplica_iva, porcentaje_iva, created_by)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
-    data.sku,
+    sku,
     data.nombre,
     data.categoria_id,
     data.unidad_medida_id,
@@ -125,7 +146,7 @@ export function create(data: CreateProductoData): ProductoConRelaciones {
     data.created_by || null,
   );
 
-  return findBySku(data.sku)!;
+  return findBySku(sku)!;
 }
 
 export function update(sku: string, data: UpdateProductoData): ProductoConRelaciones | undefined {

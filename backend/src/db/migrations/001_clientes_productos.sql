@@ -45,12 +45,13 @@ INSERT INTO ciudades (nombre) VALUES
 CREATE TABLE categorias_producto (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre TEXT NOT NULL UNIQUE,
+  prefijo_sku TEXT NOT NULL,                       -- para autogenerar SKU: SUPL, ACC, etc
   descripcion TEXT
 );
 
-INSERT INTO categorias_producto (nombre, descripcion) VALUES
-  ('Accesorios', 'Guantes, vendas y accesorios de entrenamiento'),
-  ('Suplementos', 'Creatina, proteína y suplementos deportivos');
+INSERT INTO categorias_producto (nombre, prefijo_sku, descripcion) VALUES
+  ('Accesorios', 'ACC', 'Guantes, vendas y accesorios de entrenamiento'),
+  ('Suplementos', 'SUPL', 'Creatina, proteína y suplementos deportivos');
 
 -- Unidades de medida
 CREATE TABLE unidades_medida (

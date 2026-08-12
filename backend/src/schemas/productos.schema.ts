@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const createProductoSchema = z.object({
-  sku: z.string().min(2, 'El SKU debe tener al menos 2 caracteres').max(50),
+  sku: z.string().min(2).max(50).optional(), // opcional: se autogenera
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(200),
   categoria_id: z.number().int().positive('La categoría es obligatoria'),
   unidad_medida_id: z.number().int().positive('La unidad de medida es obligatoria'),
