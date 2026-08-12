@@ -72,6 +72,13 @@ router.get('/categorias-gasto', (_req: Request, res: Response) => {
   res.json({ success: true, data });
 });
 
+// GET /api/catalogos/planes — Planes activos
+router.get('/planes', (_req: Request, res: Response) => {
+  const db = getDatabase();
+  const data = db.prepare('SELECT * FROM planes WHERE activo = 1 ORDER BY nombre').all();
+  res.json({ success: true, data });
+});
+
 // POST /api/catalogos/ciudades — Agregar ciudad nueva
 router.post('/ciudades', (req: Request, res: Response) => {
   const { nombre } = req.body;

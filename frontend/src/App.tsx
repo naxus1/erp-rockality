@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Clientes from './pages/Clientes';
 import Productos from './pages/Productos';
+import Ventas from './pages/Ventas';
 import Placeholder from './pages/Placeholder';
 
 export default function App() {
@@ -25,7 +26,7 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/productos" element={<Productos />} />
-            <Route path="/ventas" element={<Placeholder />} />
+            <Route path="/ventas" element={<Ventas />} />
             <Route path="/pagos" element={<Placeholder />} />
             <Route path="/planes" element={<Placeholder />} />
             <Route path="/gastos" element={<Placeholder />} />
