@@ -5,7 +5,12 @@ export const createClienteSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(100),
   apellidos: z.string().min(2, 'Los apellidos deben tener al menos 2 caracteres').max(100),
   telefono: z.string().max(20).optional(),
-  email: z.string().email('Email inválido').optional().or(z.literal('')),
+  email: z
+    .string()
+    .email('Email inválido')
+    .optional()
+    .or(z.literal(''))
+    .transform((v) => v || undefined),
   fecha_nacimiento: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha: YYYY-MM-DD')
@@ -23,7 +28,12 @@ export const updateClienteSchema = z.object({
   nombre: z.string().min(2).max(100).optional(),
   apellidos: z.string().min(2).max(100).optional(),
   telefono: z.string().max(20).optional(),
-  email: z.string().email('Email inválido').optional().or(z.literal('')),
+  email: z
+    .string()
+    .email('Email inválido')
+    .optional()
+    .or(z.literal(''))
+    .transform((v) => v || undefined),
   fecha_nacimiento: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha: YYYY-MM-DD')

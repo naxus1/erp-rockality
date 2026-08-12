@@ -4,6 +4,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Clientes from './pages/Clientes';
+import Productos from './pages/Productos';
 import Placeholder from './pages/Placeholder';
 
 export default function App() {
@@ -21,12 +23,14 @@ export default function App() {
             }
           >
             <Route path="/" element={<Dashboard />} />
-            <Route path="/clientes" element={<Placeholder />} />
-            <Route path="/productos" element={<Placeholder />} />
+            <Route path="/clientes" element={<Clientes />} />
+            <Route path="/productos" element={<Productos />} />
             <Route path="/ventas" element={<Placeholder />} />
             <Route path="/pagos" element={<Placeholder />} />
             <Route path="/planes" element={<Placeholder />} />
             <Route path="/gastos" element={<Placeholder />} />
+            <Route path="/gastos/nuevo" element={<Placeholder />} />
+            <Route path="/compras" element={<Placeholder />} />
             <Route path="/terceros" element={<Placeholder />} />
             <Route path="/reportes" element={<Placeholder />} />
             <Route path="/catalogos" element={<Placeholder />} />
