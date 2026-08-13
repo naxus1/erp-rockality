@@ -33,11 +33,35 @@ interface VentaResumen {
   tipo: string;
   estado: string;
 }
+interface VentaDetalle extends VentaResumen {
+  subtotal: number;
+  iva: number;
+  notas: string | null;
+  items: Array<{
+    id: number;
+    tipo_item: string;
+    producto_sku: string | null;
+    plan_id: number | null;
+    producto_nombre: string | null;
+    plan_nombre: string | null;
+    cantidad: number;
+    precio_unitario: number;
+    subtotal: number;
+  }>;
+  pagos: Array<{
+    id: number;
+    monto: number;
+    fecha: string;
+    metodo_pago_nombre: string;
+    referencia: string | null;
+  }>;
+  total_pagado: number;
+  saldo_pendiente: number;
+}
 interface ApiResponse<T> {
   success: boolean;
   data: T;
 }
-
 interface ItemVenta {
   tipo_item: 'producto' | 'plan';
   producto_sku?: string;
@@ -56,12 +80,12 @@ function formatCOP(centavos: number): string {
 }
 
 export default function Ventas() {
-  const [vista, setVista] = useState<'lista' | 'nueva'>('lista');
+  const [vista, setVista] = useState<'lista' | 'nueva' | 'detalle'>('lista');
   const [ventas, setVentas] = useState<VentaResumen[]>([]);
+  const [ventaDetalle, setVentaDetalle] = useState<VentaDetalle | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Datos para nueva venta
   const [productos, setProductos] = useState<Producto[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -76,12 +100,17 @@ export default function Ventas() {
   const [pagoMetodo, setPagoMetodo] = useState('');
   const [notas, setNotas] = useState('');
 
+  // Form pago en detalle
+  const [nuevopagoMonto, setNuevopagoMonto] = useState('');
+  const [nuevopagoMetodo, setNuevopagoMetodo] = useState('');
+  const [nuevopagoRef, setNuevopagoRef] = useState('');
+
   const cargarVentas = async () => {
     try {
       const res = await api.get<ApiResponse<VentaResumen[]>>('/ventas');
       setVentas(res.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error cargando ventas');
+      setError(err instanceof Error ? err.message : 'Error');
     }
   };
 
@@ -96,7 +125,7 @@ export default function Ventas() {
       setPlanes(plan.data || []);
       setMetodosPago(mp.data);
     } catch {
-      /* planes puede no tener endpoint aún */
+      /* */
     }
   };
 
@@ -106,7 +135,61 @@ export default function Ventas() {
       const res = await api.get<ApiResponse<Cliente[]>>(`/clientes/buscar?q=${busquedaCliente}`);
       setClientes(res.data);
     } catch {
-      /* silenciar */
+      /* */
+    }
+  };
+
+  const verDetalle = async (id: number) => {
+    try {
+      const res = await api.get<ApiResponse<VentaDetalle>>(`/ventas/${id}`);
+      setVentaDetalle(res.data);
+      setVista('detalle');
+      setError('');
+      setSuccess('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cargando detalle');
+    }
+  };
+
+  const anularVenta = async (id: number) => {
+    if (
+      !window.confirm('¿Anular esta venta? Se restaurará el stock y se cancelarán suscripciones.')
+    )
+      return;
+    setError('');
+    setSuccess('');
+    try {
+      await api.post(`/ventas/${id}/anular`, {});
+      setSuccess('Venta anulada. Stock restaurado.');
+      cargarVentas();
+      if (ventaDetalle?.id === id) setVista('lista');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error anulando');
+    }
+  };
+
+  const registrarPago = async () => {
+    if (!ventaDetalle || !nuevopagoMonto || !nuevopagoMetodo) {
+      setError('Monto y método de pago son obligatorios');
+      return;
+    }
+    setError('');
+    setSuccess('');
+    try {
+      await api.post('/pagos', {
+        venta_id: ventaDetalle.id,
+        monto: Math.round(Number(nuevopagoMonto) * 100),
+        metodo_pago_id: Number(nuevopagoMetodo),
+        referencia: nuevopagoRef || undefined,
+      });
+      setSuccess('Pago registrado');
+      setNuevopagoMonto('');
+      setNuevopagoMetodo('');
+      setNuevopagoRef('');
+      verDetalle(ventaDetalle.id);
+      cargarVentas();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error registrando pago');
     }
   };
 
@@ -122,7 +205,6 @@ export default function Ventas() {
   const agregarProducto = (sku: string) => {
     const prod = productos.find((p) => p.sku === sku);
     if (!prod) return;
-    // Si ya está, incrementar cantidad
     const existente = items.find((i) => i.tipo_item === 'producto' && i.producto_sku === sku);
     if (existente) {
       setItems(items.map((i) => (i === existente ? { ...i, cantidad: i.cantidad + 1 } : i)));
@@ -155,26 +237,20 @@ export default function Ventas() {
     ]);
   };
 
-  const quitarItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
-  };
-
+  const quitarItem = (index: number) => setItems(items.filter((_, i) => i !== index));
   const cambiarCantidad = (index: number, cantidad: number) => {
     if (cantidad < 1) return;
     setItems(items.map((item, i) => (i === index ? { ...item, cantidad } : item)));
   };
-
   const totalVenta = items.reduce((sum, i) => sum + i.precio_unitario * i.cantidad, 0);
 
   const registrarVenta = async () => {
     setError('');
     setSuccess('');
-
     if (items.length === 0) {
       setError('Agrega al menos un producto o plan');
       return;
     }
-
     const body: Record<string, unknown> = {
       cliente_cedula: clienteCedula || undefined,
       tipo,
@@ -187,14 +263,12 @@ export default function Ventas() {
       })),
       notas: notas || undefined,
     };
-
     if (pagoMonto && pagoMetodo) {
       body.pago_inmediato = {
         monto: Math.round(Number(pagoMonto) * 100),
         metodo_pago_id: Number(pagoMetodo),
       };
     }
-
     try {
       await api.post('/ventas', body);
       setSuccess('Venta registrada exitosamente');
@@ -206,11 +280,222 @@ export default function Ventas() {
       setNotas('');
       setVista('lista');
       cargarVentas();
-      cargarDatos(); // refrescar stock
+      cargarDatos();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error registrando venta');
     }
   };
+
+  // ─── VISTA DETALLE ────────────────────────────────────
+  if (vista === 'detalle' && ventaDetalle) {
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-bold">Venta #{ventaDetalle.id}</h2>
+          <button
+            onClick={() => {
+              setVista('lista');
+              setError('');
+              setSuccess('');
+            }}
+            className="text-sm text-gray-500 hover:text-gray-800"
+          >
+            ← Volver
+          </button>
+        </div>
+
+        {error && <p className="text-red-600 text-sm mb-3 bg-red-50 p-2 rounded">{error}</p>}
+        {success && (
+          <p className="text-green-600 text-sm mb-3 bg-green-50 p-2 rounded">{success}</p>
+        )}
+
+        <div className="grid grid-cols-3 gap-4">
+          {/* Info + Items */}
+          <div className="col-span-2 space-y-4">
+            <div className="bg-white p-4 rounded shadow">
+              <div className="grid grid-cols-3 gap-3 text-sm mb-3">
+                <div>
+                  <span className="text-gray-500">Cliente:</span>{' '}
+                  <span className="font-medium">
+                    {ventaDetalle.cliente_nombre
+                      ? `${ventaDetalle.cliente_nombre} ${ventaDetalle.cliente_apellidos}`
+                      : 'Sin cliente'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Fecha:</span> {ventaDetalle.fecha.split(' ')[0]}
+                </div>
+                <div>
+                  <span className="text-gray-500">Estado:</span>{' '}
+                  <span
+                    className={`px-2 py-0.5 rounded text-xs ${ventaDetalle.estado === 'pagada' ? 'bg-green-100 text-green-700' : ventaDetalle.estado === 'pendiente' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}
+                  >
+                    {ventaDetalle.estado}
+                  </span>
+                </div>
+              </div>
+              {ventaDetalle.notas && (
+                <p className="text-xs text-gray-500">Notas: {ventaDetalle.notas}</p>
+              )}
+            </div>
+
+            {/* Items */}
+            <div className="bg-white p-4 rounded shadow">
+              <h3 className="text-sm font-medium mb-2">Items</h3>
+              <table className="w-full text-sm">
+                <thead className="text-xs text-gray-500 text-left">
+                  <tr>
+                    <th className="pb-1">Producto/Plan</th>
+                    <th className="pb-1 w-16">Cant.</th>
+                    <th className="pb-1 text-right">P. Unit.</th>
+                    <th className="pb-1 text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ventaDetalle.items.map((item) => (
+                    <tr key={item.id} className="border-t border-gray-100">
+                      <td className="py-1.5">{item.producto_nombre || item.plan_nombre}</td>
+                      <td className="py-1.5">{item.cantidad}</td>
+                      <td className="py-1.5 text-right text-xs">
+                        {formatCOP(item.precio_unitario)}
+                      </td>
+                      <td className="py-1.5 text-right font-medium">{formatCOP(item.subtotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="border-t border-gray-200">
+                  <tr>
+                    <td colSpan={3} className="py-1.5 text-right text-xs text-gray-500">
+                      Subtotal:
+                    </td>
+                    <td className="py-1.5 text-right">{formatCOP(ventaDetalle.subtotal)}</td>
+                  </tr>
+                  <tr>
+                    <td colSpan={3} className="text-right text-xs text-gray-500">
+                      IVA:
+                    </td>
+                    <td className="text-right">{formatCOP(ventaDetalle.iva)}</td>
+                  </tr>
+                  <tr>
+                    <td colSpan={3} className="text-right font-bold">
+                      Total:
+                    </td>
+                    <td className="text-right font-bold">{formatCOP(ventaDetalle.total)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Historial de pagos */}
+            <div className="bg-white p-4 rounded shadow">
+              <h3 className="text-sm font-medium mb-2">Pagos realizados</h3>
+              {ventaDetalle.pagos.length === 0 ? (
+                <p className="text-xs text-gray-400">No hay pagos registrados.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="text-xs text-gray-500 text-left">
+                    <tr>
+                      <th className="pb-1">Fecha</th>
+                      <th className="pb-1">Método</th>
+                      <th className="pb-1">Referencia</th>
+                      <th className="pb-1 text-right">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ventaDetalle.pagos.map((p) => (
+                      <tr key={p.id} className="border-t border-gray-100">
+                        <td className="py-1.5 text-xs">{p.fecha.split(' ')[0]}</td>
+                        <td className="py-1.5">{p.metodo_pago_nombre}</td>
+                        <td className="py-1.5 text-xs text-gray-500">{p.referencia || '-'}</td>
+                        <td className="py-1.5 text-right font-medium">{formatCOP(p.monto)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          {/* Columna derecha: resumen pagos + registrar pago */}
+          <div className="space-y-4">
+            <div className="bg-white p-4 rounded shadow">
+              <h3 className="text-sm font-medium mb-3">Resumen de pagos</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Total venta:</span>
+                  <span>{formatCOP(ventaDetalle.total)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Pagado:</span>
+                  <span className="text-green-600">{formatCOP(ventaDetalle.total_pagado)}</span>
+                </div>
+                <div className="flex justify-between font-bold border-t pt-2">
+                  <span>Saldo pendiente:</span>
+                  <span
+                    className={ventaDetalle.saldo_pendiente > 0 ? 'text-red-600' : 'text-green-600'}
+                  >
+                    {formatCOP(ventaDetalle.saldo_pendiente)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Registrar pago (solo si hay saldo pendiente) */}
+            {ventaDetalle.saldo_pendiente > 0 && ventaDetalle.estado !== 'anulada' && (
+              <div className="bg-white p-4 rounded shadow">
+                <h3 className="text-sm font-medium mb-2">Registrar pago</h3>
+                <div className="space-y-2">
+                  <input
+                    type="number"
+                    min="1"
+                    value={nuevopagoMonto}
+                    onChange={(e) => setNuevopagoMonto(e.target.value)}
+                    placeholder={`Máx: ${(ventaDetalle.saldo_pendiente / 100).toLocaleString()}`}
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  />
+                  <select
+                    value={nuevopagoMetodo}
+                    onChange={(e) => setNuevopagoMetodo(e.target.value)}
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  >
+                    <option value="">-- Método --</option>
+                    {metodosPago.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={nuevopagoRef}
+                    onChange={(e) => setNuevopagoRef(e.target.value)}
+                    placeholder="Referencia (opcional)"
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  />
+                  <button
+                    onClick={registrarPago}
+                    className="w-full bg-gray-900 text-white py-1.5 rounded text-sm"
+                  >
+                    Registrar pago
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Anular */}
+            {ventaDetalle.estado !== 'anulada' && (
+              <button
+                onClick={() => anularVenta(ventaDetalle.id)}
+                className="w-full border border-red-300 text-red-600 py-1.5 rounded text-sm hover:bg-red-50"
+              >
+                Anular venta
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ─── VISTA LISTA ──────────────────────────────────────
   if (vista === 'lista') {
@@ -230,6 +515,7 @@ export default function Ventas() {
           </button>
         </div>
 
+        {error && <p className="text-red-600 text-sm mb-3 bg-red-50 p-2 rounded">{error}</p>}
         {success && (
           <p className="text-green-600 text-sm mb-3 bg-green-50 p-2 rounded">{success}</p>
         )}
@@ -244,18 +530,23 @@ export default function Ventas() {
                 <th className="px-3 py-2">Tipo</th>
                 <th className="px-3 py-2 text-right">Total</th>
                 <th className="px-3 py-2">Estado</th>
+                <th className="px-3 py-2"></th>
               </tr>
             </thead>
             <tbody>
               {ventas.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-4 text-center text-gray-400">
+                  <td colSpan={7} className="px-3 py-4 text-center text-gray-400">
                     No hay ventas registradas
                   </td>
                 </tr>
               ) : (
                 ventas.map((v) => (
-                  <tr key={v.id} className="border-t border-gray-100 hover:bg-gray-50">
+                  <tr
+                    key={v.id}
+                    className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
+                    onClick={() => verDetalle(v.id)}
+                  >
                     <td className="px-3 py-2 font-mono text-xs">{v.id}</td>
                     <td className="px-3 py-2 text-xs">{v.fecha.split(' ')[0]}</td>
                     <td className="px-3 py-2">
@@ -271,6 +562,19 @@ export default function Ventas() {
                       >
                         {v.estado}
                       </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      {v.estado !== 'anulada' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            anularVenta(v.id);
+                          }}
+                          className="text-xs text-red-600 hover:underline"
+                        >
+                          Anular
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -291,14 +595,13 @@ export default function Ventas() {
           onClick={() => setVista('lista')}
           className="text-sm text-gray-500 hover:text-gray-800"
         >
-          ← Volver al listado
+          ← Volver
         </button>
       </div>
 
       {error && <p className="text-red-600 text-sm mb-3 bg-red-50 p-2 rounded">{error}</p>}
 
       <div className="grid grid-cols-3 gap-4">
-        {/* Columna izquierda: Cliente + Items */}
         <div className="col-span-2 space-y-4">
           {/* Cliente */}
           <div className="bg-white p-4 rounded shadow">
@@ -319,7 +622,7 @@ export default function Ventas() {
                   }}
                   className="text-xs text-red-500"
                 >
-                  ✕ Quitar
+                  ✕
                 </button>
               )}
             </div>
@@ -342,7 +645,7 @@ export default function Ventas() {
             )}
           </div>
 
-          {/* Agregar productos */}
+          {/* Productos */}
           <div className="bg-white p-4 rounded shadow">
             <h3 className="text-sm font-medium mb-2">Agregar productos</h3>
             <select
@@ -361,7 +664,6 @@ export default function Ventas() {
                   </option>
                 ))}
             </select>
-
             {planes.length > 0 && (
               <>
                 <h3 className="text-sm font-medium mb-2 mt-3">Agregar plan</h3>
@@ -383,10 +685,10 @@ export default function Ventas() {
             )}
           </div>
 
-          {/* Items agregados */}
+          {/* Items */}
           {items.length > 0 && (
             <div className="bg-white p-4 rounded shadow">
-              <h3 className="text-sm font-medium mb-2">Items de la venta</h3>
+              <h3 className="text-sm font-medium mb-2">Items</h3>
               <table className="w-full text-sm">
                 <thead className="text-left text-xs text-gray-500">
                   <tr>
@@ -394,7 +696,7 @@ export default function Ventas() {
                     <th className="pb-1 w-20">Cant.</th>
                     <th className="pb-1 text-right">P. Unit.</th>
                     <th className="pb-1 text-right">Subtotal</th>
-                    <th className="pb-1"></th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -429,24 +731,15 @@ export default function Ventas() {
           )}
         </div>
 
-        {/* Columna derecha: Resumen + Pago */}
+        {/* Columna derecha */}
         <div className="space-y-4">
-          {/* Resumen */}
           <div className="bg-white p-4 rounded shadow">
             <h3 className="text-sm font-medium mb-3">Resumen</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Items:</span>
-                <span>{items.length}</span>
-              </div>
-              <div className="flex justify-between text-lg font-bold border-t pt-2">
-                <span>Total:</span>
-                <span>{formatCOP(totalVenta)}</span>
-              </div>
+            <div className="flex justify-between text-lg font-bold">
+              <span>Total:</span>
+              <span>{formatCOP(totalVenta)}</span>
             </div>
           </div>
-
-          {/* Tipo de venta */}
           <div className="bg-white p-4 rounded shadow">
             <h3 className="text-sm font-medium mb-2">Tipo</h3>
             <select
@@ -458,11 +751,9 @@ export default function Ventas() {
               <option value="recompra">Recompra</option>
             </select>
           </div>
-
-          {/* Pago */}
           <div className="bg-white p-4 rounded shadow">
             <h3 className="text-sm font-medium mb-2">Pago (opcional)</h3>
-            <p className="text-xs text-gray-400 mb-2">Si no se paga ahora, queda como pendiente.</p>
+            <p className="text-xs text-gray-400 mb-2">Sin pago = queda pendiente.</p>
             <div className="space-y-2">
               <input
                 type="number"
@@ -477,7 +768,7 @@ export default function Ventas() {
                 onChange={(e) => setPagoMetodo(e.target.value)}
                 className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
               >
-                <option value="">-- Método de pago --</option>
+                <option value="">-- Método --</option>
                 {metodosPago.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.nombre}
@@ -486,8 +777,6 @@ export default function Ventas() {
               </select>
             </div>
           </div>
-
-          {/* Notas */}
           <div className="bg-white p-4 rounded shadow">
             <h3 className="text-sm font-medium mb-2">Notas</h3>
             <input
@@ -498,8 +787,6 @@ export default function Ventas() {
               className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
             />
           </div>
-
-          {/* Botón registrar */}
           <button
             onClick={registrarVenta}
             disabled={items.length === 0}
