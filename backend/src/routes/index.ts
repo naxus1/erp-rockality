@@ -16,6 +16,7 @@ import comprasRoutes from './compras.routes.js';
 import planesRoutes from './planes.routes.js';
 import gastosRoutes from './gastos.routes.js';
 import reportesRoutes from './reportes.routes.js';
+import usuariosRoutes from './usuarios.routes.js';
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.use('/compras', comprasRoutes);
 router.use('/planes', planesRoutes);
 router.use('/gastos', gastosRoutes);
 router.use('/reportes', reportesRoutes);
+router.use('/usuarios', usuariosRoutes);
 
 export default router;

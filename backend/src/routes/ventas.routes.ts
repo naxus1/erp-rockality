@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import * as repo from '../repositories/ventas.repository.js';
+import { registrarAudit } from '../middleware/audit.js';
 import { validate } from '../middleware/validate.js';
 import { createVentaSchema } from '../schemas/ventas.schema.js';
 
@@ -30,6 +31,13 @@ router.get('/:id', (req: Request, res: Response) => {
 router.post('/', validate(createVentaSchema), (req: Request, res: Response) => {
   try {
     const venta = repo.create(req.body);
+    registrarAudit({
+      usuario_id: req.body.created_by || 'sistema',
+      accion: 'crear',
+      entidad: 'ventas',
+      entidad_id: String(venta.id),
+      datos_nuevos: { total: venta.total, items: venta.items.length },
+    });
     res.status(201).json({ success: true, data: venta });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Error al crear la venta';
@@ -44,6 +52,14 @@ router.post('/:id/anular', (req: Request, res: Response) => {
     res.status(400).json({ success: false, error: 'Venta no encontrada o ya anulada' });
     return;
   }
+  registrarAudit({
+    usuario_id: 'sistema',
+    accion: 'anular',
+    entidad: 'ventas',
+    entidad_id: req.params.id,
+    datos_anteriores: { estado: 'activa' },
+    datos_nuevos: { estado: 'anulada' },
+  });
   res.json({ success: true, message: 'Venta anulada. Stock restaurado.' });
 });
 
