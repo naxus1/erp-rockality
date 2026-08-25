@@ -145,7 +145,7 @@ export default function Terceros() {
         <h2 className="text-lg font-bold">Terceros</h2>
         <button
           onClick={showForm ? cerrarForm : abrirCrear}
-          className="bg-gray-900 text-white px-3 py-1.5 rounded text-sm"
+          className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
         >
           {showForm ? 'Cancelar' : '+ Nuevo tercero'}
         </button>
@@ -157,7 +157,7 @@ export default function Terceros() {
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="bg-white p-4 rounded shadow mb-4 grid grid-cols-3 gap-3"
+          className="p-4 rounded-xl neu-flat mb-4 grid grid-cols-3 gap-3"
         >
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">NIT / Cédula *</label>
@@ -167,7 +167,7 @@ export default function Terceros() {
               value={form.nit}
               onChange={(e) => setForm({ ...form, nit: e.target.value })}
               disabled={!!editando}
-              className={`w-full border border-gray-300 rounded px-2 py-1.5 text-sm ${editando ? 'bg-gray-100' : ''}`}
+              className={`w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none ${editando ? 'bg-gray-100' : ''}`}
             />
           </div>
           <div>
@@ -177,7 +177,7 @@ export default function Terceros() {
               required
               value={form.nombre}
               onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -186,7 +186,7 @@ export default function Terceros() {
               required
               value={form.tipo_tercero_id}
               onChange={(e) => setForm({ ...form, tipo_tercero_id: e.target.value })}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Seleccionar --</option>
               {tiposTercero.map((t) => (
@@ -202,7 +202,7 @@ export default function Terceros() {
               type="text"
               value={form.telefono}
               onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -211,7 +211,7 @@ export default function Terceros() {
               type="text"
               value={form.direccion}
               onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -220,7 +220,7 @@ export default function Terceros() {
               type="text"
               value={form.nombre_contacto}
               onChange={(e) => setForm({ ...form, nombre_contacto: e.target.value })}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div className="col-span-2">
@@ -229,11 +229,14 @@ export default function Terceros() {
               type="text"
               value={form.observaciones}
               onChange={(e) => setForm({ ...form, observaciones: e.target.value })}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div className="flex items-end justify-end">
-            <button type="submit" className="bg-gray-900 text-white px-4 py-1.5 rounded text-sm">
+            <button
+              type="submit"
+              className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+            >
               {editando ? 'Actualizar' : 'Guardar'}
             </button>
           </div>
@@ -247,12 +250,12 @@ export default function Terceros() {
           placeholder="Buscar por nombre, NIT o contacto..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="flex-1 max-w-md border border-gray-300 rounded px-3 py-1.5 text-sm"
+          className="flex-1 max-w-md bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
         />
         <select
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
-          className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+          className="bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
         >
           <option value="">Todos los tipos</option>
           {tiposTercero.map((t) => (
@@ -264,9 +267,9 @@ export default function Terceros() {
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded shadow overflow-auto">
+      <div className="rounded-xl neu-flat overflow-auto">
         <table className="w-full text-sm">
-          <thead className="bg-gray-100 text-left">
+          <thead className="text-left text-gray-500">
             <tr>
               <th className="px-3 py-2">NIT/Cédula</th>
               <th className="px-3 py-2">Nombre</th>

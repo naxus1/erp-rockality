@@ -27,21 +27,26 @@ export default function Layout() {
   const visibleItems = NAV_ITEMS.filter((item) => user && item.roles.includes(user.rol));
 
   return (
-    <div className="min-h-screen flex">
-      {/* Sidebar */}
-      <aside className="w-56 bg-gray-900 text-gray-300 flex flex-col">
-        <div className="p-4 border-b border-gray-700">
-          <h1 className="text-sm font-bold text-white">ERP Rockality</h1>
+    <div className="min-h-screen flex bg-[#e0e5ec]">
+      {/* Sidebar — dark neumorphic */}
+      <aside className="w-56 bg-[#2d3748] flex flex-col shadow-xl">
+        <div className="p-5 border-b border-gray-700/50">
+          <h1 className="text-base font-bold text-white tracking-wide">Rockality</h1>
+          <p className="text-[10px] text-gray-400 mt-0.5">ERP Gimnasio</p>
         </div>
 
-        <nav className="flex-1 py-2">
+        <nav className="flex-1 py-3 px-2 space-y-0.5">
           {visibleItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.to === '/'}
               className={({ isActive }) =>
-                `block px-4 py-2 text-sm ${isActive ? 'bg-gray-800 text-white' : 'hover:bg-gray-800 hover:text-white'}`
+                `block px-3 py-2 rounded-lg text-sm transition-all ${
+                  isActive
+                    ? 'bg-gray-900/60 text-white shadow-inner'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-700/40'
+                }`
               }
             >
               {item.label}
@@ -49,17 +54,20 @@ export default function Layout() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-gray-700">
-          <p className="text-xs text-gray-400 mb-1">{user?.nombre}</p>
-          <p className="text-xs text-gray-500 mb-2">{user?.rol}</p>
-          <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-white">
+        <div className="p-4 border-t border-gray-700/50">
+          <p className="text-xs text-gray-300 font-medium">{user?.nombre}</p>
+          <p className="text-[10px] text-gray-500 capitalize mb-2">{user?.rol}</p>
+          <button
+            onClick={handleLogout}
+            className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+          >
             Cerrar sesión
           </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 bg-gray-50 p-6 overflow-auto">
+      <main className="flex-1 p-6 overflow-auto">
         <Outlet />
       </main>
     </div>

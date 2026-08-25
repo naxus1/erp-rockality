@@ -184,7 +184,7 @@ export default function Compras() {
               setError('');
               setSuccess('');
             }}
-            className="bg-gray-900 text-white px-3 py-1.5 rounded text-sm"
+            className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
           >
             + Nueva compra
           </button>
@@ -195,9 +195,9 @@ export default function Compras() {
           <p className="text-green-600 text-sm mb-3 bg-green-50 p-2 rounded">{success}</p>
         )}
 
-        <div className="bg-white rounded shadow overflow-auto">
+        <div className="rounded-xl neu-flat overflow-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-100 text-left">
+            <thead className="text-left text-gray-500">
               <tr>
                 <th className="px-3 py-2">#</th>
                 <th className="px-3 py-2">Fecha</th>
@@ -268,12 +268,12 @@ export default function Compras() {
       <div className="grid grid-cols-3 gap-4">
         <div className="col-span-2 space-y-4">
           {/* Proveedor */}
-          <div className="bg-white p-4 rounded shadow">
+          <div className="p-4 rounded-xl neu-flat">
             <h3 className="text-sm font-medium mb-2">Proveedor *</h3>
             <select
               value={terceroNit}
               onChange={(e) => setTerceroNit(e.target.value)}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Seleccionar proveedor --</option>
               {proveedores.map((p) => (
@@ -285,14 +285,14 @@ export default function Compras() {
           </div>
 
           {/* Productos */}
-          <div className="bg-white p-4 rounded shadow">
+          <div className="p-4 rounded-xl neu-flat">
             <h3 className="text-sm font-medium mb-2">Agregar productos</h3>
             <select
               onChange={(e) => {
                 if (e.target.value) agregarProducto(e.target.value);
                 e.target.value = '';
               }}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Seleccionar producto --</option>
               {productos.map((p) => (
@@ -305,7 +305,7 @@ export default function Compras() {
 
           {/* Items */}
           {items.length > 0 && (
-            <div className="bg-white p-4 rounded shadow">
+            <div className="p-4 rounded-xl neu-flat">
               <h3 className="text-sm font-medium mb-2">Productos a comprar</h3>
               <table className="w-full text-sm">
                 <thead className="text-left text-xs text-gray-500">
@@ -357,7 +357,7 @@ export default function Compras() {
 
         {/* Columna derecha */}
         <div className="space-y-4">
-          <div className="bg-white p-4 rounded shadow">
+          <div className="p-4 rounded-xl neu-flat">
             <h3 className="text-sm font-medium mb-3">Resumen</h3>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
@@ -375,7 +375,7 @@ export default function Compras() {
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded shadow space-y-2">
+          <div className="p-4 rounded-xl neu-flat space-y-2">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 Factura proveedor
@@ -385,7 +385,7 @@ export default function Compras() {
                 value={factura}
                 onChange={(e) => setFactura(e.target.value)}
                 placeholder="Nº factura"
-                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               />
             </div>
             <div>
@@ -396,7 +396,7 @@ export default function Compras() {
                 value={iva}
                 onChange={(e) => setIva(e.target.value)}
                 placeholder="0"
-                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               />
             </div>
             <div>
@@ -404,7 +404,7 @@ export default function Compras() {
               <select
                 value={metodoPagoId}
                 onChange={(e) => setMetodoPagoId(e.target.value)}
-                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               >
                 <option value="">-- Seleccionar --</option>
                 {metodosPago.map((m) => (
@@ -421,7 +421,7 @@ export default function Compras() {
                 value={notas}
                 onChange={(e) => setNotas(e.target.value)}
                 placeholder="Opcional"
-                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               />
             </div>
           </div>

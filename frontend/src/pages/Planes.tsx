@@ -168,7 +168,7 @@ export default function Planes() {
             <h2 className="text-lg font-bold">Planes de entrenamiento</h2>
             <button
               onClick={showForm ? cerrarForm : abrirCrear}
-              className="bg-gray-900 text-white px-3 py-1.5 rounded text-sm"
+              className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
             >
               {showForm ? 'Cancelar' : '+ Nuevo plan'}
             </button>
@@ -177,7 +177,7 @@ export default function Planes() {
           {showForm && (
             <form
               onSubmit={handleSubmit}
-              className="bg-white p-4 rounded shadow mb-4 grid grid-cols-3 gap-3"
+              className="p-4 rounded-xl neu-flat mb-4 grid grid-cols-3 gap-3"
             >
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
@@ -186,7 +186,7 @@ export default function Planes() {
                   required
                   value={form.nombre}
                   onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 />
               </div>
               <div>
@@ -194,7 +194,7 @@ export default function Planes() {
                 <select
                   value={form.modalidad}
                   onChange={(e) => setForm({ ...form, modalidad: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 >
                   <option value="presencial">Presencial</option>
                   <option value="virtual">Virtual</option>
@@ -211,7 +211,7 @@ export default function Planes() {
                   min="1"
                   value={form.duracion_dias}
                   onChange={(e) => setForm({ ...form, duracion_dias: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 />
               </div>
               <div>
@@ -224,7 +224,7 @@ export default function Planes() {
                   min="1"
                   value={form.precio}
                   onChange={(e) => setForm({ ...form, precio: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 />
               </div>
               <div className="flex items-center gap-3">
@@ -243,7 +243,7 @@ export default function Planes() {
                     max="100"
                     value={form.porcentaje_iva}
                     onChange={(e) => setForm({ ...form, porcentaje_iva: e.target.value })}
-                    className="w-16 border border-gray-300 rounded px-2 py-1.5 text-sm"
+                    className="w-16 bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                   />
                 )}
               </div>
@@ -253,13 +253,13 @@ export default function Planes() {
                   type="text"
                   value={form.descripcion}
                   onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 />
               </div>
               <div className="col-span-3 flex justify-end">
                 <button
                   type="submit"
-                  className="bg-gray-900 text-white px-4 py-1.5 rounded text-sm"
+                  className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
                 >
                   {editando ? 'Actualizar' : 'Guardar'}
                 </button>
@@ -267,9 +267,9 @@ export default function Planes() {
             </form>
           )}
 
-          <div className="bg-white rounded shadow overflow-auto">
+          <div className="rounded-xl neu-flat overflow-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-100 text-left">
+              <thead className="text-left text-gray-500">
                 <tr>
                   <th className="px-3 py-2">Nombre</th>
                   <th className="px-3 py-2">Modalidad</th>
@@ -340,9 +340,9 @@ export default function Planes() {
             </div>
           )}
 
-          <div className="bg-white rounded shadow overflow-auto">
+          <div className="rounded-xl neu-flat overflow-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-100 text-left">
+              <thead className="text-left text-gray-500">
                 <tr>
                   <th className="px-3 py-2">Cliente</th>
                   <th className="px-3 py-2">Plan</th>
