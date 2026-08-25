@@ -9,6 +9,7 @@ import Productos from './pages/Productos';
 import Ventas from './pages/Ventas';
 import Terceros from './pages/Terceros';
 import Compras from './pages/Compras';
+import Planes from './pages/Planes';
 import Placeholder from './pages/Placeholder';
 
 export default function App() {
@@ -30,7 +31,7 @@ export default function App() {
             <Route path="/productos" element={<Productos />} />
             <Route path="/ventas" element={<Ventas />} />
             <Route path="/pagos" element={<Placeholder />} />
-            <Route path="/planes" element={<Placeholder />} />
+            <Route path="/planes" element={<Planes />} />
             <Route path="/gastos" element={<Placeholder />} />
             <Route path="/gastos/nuevo" element={<Placeholder />} />
             <Route path="/compras" element={<Compras />} />
