@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 
 interface Producto {
@@ -80,11 +81,18 @@ function formatCOP(centavos: number): string {
 }
 
 export default function Ventas() {
+  const [searchParams] = useSearchParams();
   const [vista, setVista] = useState<'lista' | 'nueva' | 'detalle'>('lista');
   const [ventas, setVentas] = useState<VentaResumen[]>([]);
   const [ventaDetalle, setVentaDetalle] = useState<VentaDetalle | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Filtros
+  const [filtroEstado, setFiltroEstado] = useState(searchParams.get('estado') || '');
+  const [filtroTipo, setFiltroTipo] = useState('');
+  const [ordenarPor, setOrdenarPor] = useState<'fecha' | 'total' | 'cliente'>('fecha');
+  const [ordenDir, setOrdenDir] = useState<'asc' | 'desc'>('desc');
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
@@ -107,7 +115,10 @@ export default function Ventas() {
 
   const cargarVentas = async () => {
     try {
-      const res = await api.get<ApiResponse<VentaResumen[]>>('/ventas');
+      let url = '/ventas?';
+      if (filtroEstado) url += `estado=${filtroEstado}&`;
+      if (filtroTipo) url += `tipo=${filtroTipo}&`;
+      const res = await api.get<ApiResponse<VentaResumen[]>>(url);
       setVentas(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
@@ -197,6 +208,9 @@ export default function Ventas() {
     cargarVentas();
     cargarDatos();
   }, []);
+  useEffect(() => {
+    cargarVentas();
+  }, [filtroEstado, filtroTipo]);
   useEffect(() => {
     const t = setTimeout(() => buscarCliente(), 300);
     return () => clearTimeout(t);
@@ -520,15 +534,74 @@ export default function Ventas() {
           <p className="text-green-600 text-sm mb-3 bg-green-50 p-2 rounded">{success}</p>
         )}
 
+        {/* Filtros */}
+        <div className="flex gap-3 mb-3">
+          <select
+            value={filtroEstado}
+            onChange={(e) => setFiltroEstado(e.target.value)}
+            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+          >
+            <option value="">Todos los estados</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="pagada">Pagada</option>
+            <option value="anulada">Anulada</option>
+          </select>
+          <select
+            value={filtroTipo}
+            onChange={(e) => setFiltroTipo(e.target.value)}
+            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+          >
+            <option value="">Todos los tipos</option>
+            <option value="nueva">Nueva</option>
+            <option value="recompra">Recompra</option>
+          </select>
+          {(filtroEstado || filtroTipo) && (
+            <button
+              onClick={() => {
+                setFiltroEstado('');
+                setFiltroTipo('');
+              }}
+              className="text-xs text-gray-500 hover:text-gray-800"
+            >
+              Limpiar filtros
+            </button>
+          )}
+          <span className="ml-auto text-xs text-gray-400">{ventas.length} resultado(s)</span>
+        </div>
+
         <div className="bg-white rounded shadow overflow-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-100 text-left">
               <tr>
                 <th className="px-3 py-2">#</th>
-                <th className="px-3 py-2">Fecha</th>
-                <th className="px-3 py-2">Cliente</th>
+                <th
+                  className="px-3 py-2 cursor-pointer hover:text-gray-900"
+                  onClick={() => {
+                    setOrdenarPor('fecha');
+                    setOrdenDir(ordenarPor === 'fecha' && ordenDir === 'desc' ? 'asc' : 'desc');
+                  }}
+                >
+                  Fecha {ordenarPor === 'fecha' && (ordenDir === 'desc' ? '↓' : '↑')}
+                </th>
+                <th
+                  className="px-3 py-2 cursor-pointer hover:text-gray-900"
+                  onClick={() => {
+                    setOrdenarPor('cliente');
+                    setOrdenDir(ordenarPor === 'cliente' && ordenDir === 'asc' ? 'desc' : 'asc');
+                  }}
+                >
+                  Cliente {ordenarPor === 'cliente' && (ordenDir === 'asc' ? '↑' : '↓')}
+                </th>
                 <th className="px-3 py-2">Tipo</th>
-                <th className="px-3 py-2 text-right">Total</th>
+                <th
+                  className="px-3 py-2 text-right cursor-pointer hover:text-gray-900"
+                  onClick={() => {
+                    setOrdenarPor('total');
+                    setOrdenDir(ordenarPor === 'total' && ordenDir === 'desc' ? 'asc' : 'desc');
+                  }}
+                >
+                  Total {ordenarPor === 'total' && (ordenDir === 'desc' ? '↓' : '↑')}
+                </th>
                 <th className="px-3 py-2">Estado</th>
                 <th className="px-3 py-2"></th>
               </tr>
@@ -541,43 +614,52 @@ export default function Ventas() {
                   </td>
                 </tr>
               ) : (
-                ventas.map((v) => (
-                  <tr
-                    key={v.id}
-                    className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => verDetalle(v.id)}
-                  >
-                    <td className="px-3 py-2 font-mono text-xs">{v.id}</td>
-                    <td className="px-3 py-2 text-xs">{v.fecha.split(' ')[0]}</td>
-                    <td className="px-3 py-2">
-                      {v.cliente_nombre
-                        ? `${v.cliente_nombre} ${v.cliente_apellidos}`
-                        : 'Sin cliente'}
-                    </td>
-                    <td className="px-3 py-2 text-xs">{v.tipo}</td>
-                    <td className="px-3 py-2 text-right font-medium">{formatCOP(v.total)}</td>
-                    <td className="px-3 py-2">
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded ${v.estado === 'pagada' ? 'bg-green-100 text-green-700' : v.estado === 'pendiente' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}
-                      >
-                        {v.estado}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
-                      {v.estado !== 'anulada' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            anularVenta(v.id);
-                          }}
-                          className="text-xs text-red-600 hover:underline"
+                [...ventas]
+                  .sort((a, b) => {
+                    let cmp = 0;
+                    if (ordenarPor === 'fecha') cmp = a.fecha.localeCompare(b.fecha);
+                    else if (ordenarPor === 'total') cmp = a.total - b.total;
+                    else if (ordenarPor === 'cliente')
+                      cmp = (a.cliente_nombre || '').localeCompare(b.cliente_nombre || '');
+                    return ordenDir === 'desc' ? -cmp : cmp;
+                  })
+                  .map((v) => (
+                    <tr
+                      key={v.id}
+                      className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => verDetalle(v.id)}
+                    >
+                      <td className="px-3 py-2 font-mono text-xs">{v.id}</td>
+                      <td className="px-3 py-2 text-xs">{v.fecha.split(' ')[0]}</td>
+                      <td className="px-3 py-2">
+                        {v.cliente_nombre
+                          ? `${v.cliente_nombre} ${v.cliente_apellidos}`
+                          : 'Sin cliente'}
+                      </td>
+                      <td className="px-3 py-2 text-xs">{v.tipo}</td>
+                      <td className="px-3 py-2 text-right font-medium">{formatCOP(v.total)}</td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded ${v.estado === 'pagada' ? 'bg-green-100 text-green-700' : v.estado === 'pendiente' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}
                         >
-                          Anular
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                          {v.estado}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {v.estado !== 'anulada' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              anularVenta(v.id);
+                            }}
+                            className="text-xs text-red-600 hover:underline"
+                          >
+                            Anular
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
               )}
             </tbody>
           </table>
