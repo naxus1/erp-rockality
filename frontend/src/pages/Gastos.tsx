@@ -1,0 +1,481 @@
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
+
+interface Gasto {
+  id: number;
+  tercero_nombre: string;
+  gerencia_nombre: string;
+  tipo_gasto_nombre: string;
+  categoria_gasto_nombre: string;
+  descripcion: string;
+  valor_base: number;
+  iva: number;
+  total: number;
+  periodo_mes: number;
+  periodo_anio: number;
+  fecha_pago: string;
+  metodo_pago_nombre: string | null;
+  referencia_pago: string | null;
+  estado: string;
+  recurrente: number;
+}
+interface Catalogo {
+  id: number;
+  nombre: string;
+}
+interface Tercero {
+  nit: string;
+  nombre: string;
+}
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+}
+
+function formatCOP(centavos: number): string {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+  }).format(centavos / 100);
+}
+
+const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+export default function Gastos() {
+  const [vista, setVista] = useState<'lista' | 'nuevo'>('lista');
+  const [gastos, setGastos] = useState<Gasto[]>([]);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // Filtros
+  const [filtroMes, setFiltroMes] = useState(String(new Date().getMonth() + 1));
+  const [filtroAnio, setFiltroAnio] = useState(String(new Date().getFullYear()));
+  const [filtroGerencia, setFiltroGerencia] = useState('');
+
+  // Catálogos
+  const [gerencias, setGerencias] = useState<Catalogo[]>([]);
+  const [tiposGasto, setTiposGasto] = useState<Catalogo[]>([]);
+  const [categoriasGasto, setCategoriasGasto] = useState<Catalogo[]>([]);
+  const [metodosPago, setMetodosPago] = useState<Catalogo[]>([]);
+  const [terceros, setTerceros] = useState<Tercero[]>([]);
+
+  // Form
+  const [form, setForm] = useState({
+    tercero_nit: '',
+    gerencia_id: '',
+    tipo_gasto_id: '',
+    categoria_gasto_id: '',
+    descripcion: '',
+    valor_base: '',
+    iva: '',
+    periodo_mes: String(new Date().getMonth() + 1),
+    periodo_anio: String(new Date().getFullYear()),
+    fecha_pago: new Date().toISOString().split('T')[0],
+    metodo_pago_id: '',
+    referencia_pago: '',
+    recurrente: 0,
+    notas: '',
+  });
+
+  const cargarGastos = async () => {
+    try {
+      let url = `/gastos?periodo_mes=${filtroMes}&periodo_anio=${filtroAnio}`;
+      if (filtroGerencia) url += `&gerencia_id=${filtroGerencia}`;
+      const res = await api.get<ApiResponse<Gasto[]>>(url);
+      setGastos(res.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    }
+  };
+
+  const cargarCatalogos = async () => {
+    try {
+      const [g, tg, cg, mp, t] = await Promise.all([
+        api.get<ApiResponse<Catalogo[]>>('/catalogos/gerencias'),
+        api.get<ApiResponse<Catalogo[]>>('/catalogos/tipos-gasto'),
+        api.get<ApiResponse<Catalogo[]>>('/catalogos/categorias-gasto'),
+        api.get<ApiResponse<Catalogo[]>>('/catalogos/metodos-pago'),
+        api.get<ApiResponse<Tercero[]>>('/terceros'),
+      ]);
+      setGerencias(g.data);
+      setTiposGasto(tg.data);
+      setCategoriasGasto(cg.data);
+      setMetodosPago(mp.data);
+      setTerceros(t.data);
+    } catch {
+      /* */
+    }
+  };
+
+  useEffect(() => {
+    cargarGastos();
+    cargarCatalogos();
+  }, []);
+  useEffect(() => {
+    cargarGastos();
+  }, [filtroMes, filtroAnio, filtroGerencia]);
+
+  const totalMes = gastos
+    .filter((g) => g.estado !== 'anulado')
+    .reduce((sum, g) => sum + g.total, 0);
+
+  const registrarGasto = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    if (
+      !form.tercero_nit ||
+      !form.gerencia_id ||
+      !form.tipo_gasto_id ||
+      !form.categoria_gasto_id ||
+      !form.descripcion ||
+      !form.valor_base
+    ) {
+      setError('Campos obligatorios: tercero, gerencia, tipo, categoría, descripción, valor');
+      return;
+    }
+    try {
+      await api.post('/gastos', {
+        tercero_nit: form.tercero_nit,
+        gerencia_id: Number(form.gerencia_id),
+        tipo_gasto_id: Number(form.tipo_gasto_id),
+        categoria_gasto_id: Number(form.categoria_gasto_id),
+        descripcion: form.descripcion,
+        valor_base: Math.round(Number(form.valor_base) * 100),
+        iva: form.iva ? Math.round(Number(form.iva) * 100) : 0,
+        periodo_mes: Number(form.periodo_mes),
+        periodo_anio: Number(form.periodo_anio),
+        fecha_pago: form.fecha_pago || undefined,
+        metodo_pago_id: form.metodo_pago_id ? Number(form.metodo_pago_id) : undefined,
+        referencia_pago: form.referencia_pago || undefined,
+        notas: form.notas || undefined,
+      });
+      setSuccess('Gasto registrado');
+      setForm({
+        ...form,
+        descripcion: '',
+        valor_base: '',
+        iva: '',
+        referencia_pago: '',
+        notas: '',
+      });
+      setVista('lista');
+      cargarGastos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    }
+  };
+
+  // ─── LISTA ────────────────────────────────────────────
+  if (vista === 'lista') {
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-bold">Gastos</h2>
+          <button
+            onClick={() => {
+              setVista('nuevo');
+              setError('');
+              setSuccess('');
+            }}
+            className="bg-gray-900 text-white px-3 py-1.5 rounded text-sm"
+          >
+            + Registrar gasto
+          </button>
+        </div>
+
+        {error && <p className="text-red-600 text-sm mb-3 bg-red-50 p-2 rounded">{error}</p>}
+        {success && (
+          <p className="text-green-600 text-sm mb-3 bg-green-50 p-2 rounded">{success}</p>
+        )}
+
+        {/* Filtros + Resumen */}
+        <div className="flex gap-3 mb-3 items-center">
+          <select
+            value={filtroMes}
+            onChange={(e) => setFiltroMes(e.target.value)}
+            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+          >
+            {MESES.map((m, i) => (
+              <option key={i + 1} value={i + 1}>
+                {m}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filtroAnio}
+            onChange={(e) => setFiltroAnio(e.target.value)}
+            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+          >
+            {[2024, 2025, 2026, 2027].map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filtroGerencia}
+            onChange={(e) => setFiltroGerencia(e.target.value)}
+            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+          >
+            <option value="">Todas las gerencias</option>
+            {gerencias.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.nombre}
+              </option>
+            ))}
+          </select>
+          <span className="ml-auto text-sm font-bold">Total mes: {formatCOP(totalMes)}</span>
+        </div>
+
+        <div className="bg-white rounded shadow overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100 text-left">
+              <tr>
+                <th className="px-3 py-2">Fecha</th>
+                <th className="px-3 py-2">Tercero</th>
+                <th className="px-3 py-2">Descripción</th>
+                <th className="px-3 py-2">Gerencia</th>
+                <th className="px-3 py-2">Tipo</th>
+                <th className="px-3 py-2 text-right">Total</th>
+                <th className="px-3 py-2">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gastos.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-3 py-4 text-center text-gray-400">
+                    No hay gastos en este periodo
+                  </td>
+                </tr>
+              ) : (
+                gastos.map((g) => (
+                  <tr key={g.id} className="border-t border-gray-100 hover:bg-gray-50">
+                    <td className="px-3 py-2 text-xs">{g.fecha_pago}</td>
+                    <td className="px-3 py-2">{g.tercero_nombre}</td>
+                    <td className="px-3 py-2 text-xs">{g.descripcion}</td>
+                    <td className="px-3 py-2 text-xs">{g.gerencia_nombre}</td>
+                    <td className="px-3 py-2 text-xs">{g.tipo_gasto_nombre}</td>
+                    <td className="px-3 py-2 text-right font-medium">{formatCOP(g.total)}</td>
+                    <td className="px-3 py-2">
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded ${g.estado === 'registrado' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
+                      >
+                        {g.estado}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── NUEVO GASTO ──────────────────────────────────────
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-bold">Registrar gasto</h2>
+        <button
+          onClick={() => setVista('lista')}
+          className="text-sm text-gray-500 hover:text-gray-800"
+        >
+          ← Volver
+        </button>
+      </div>
+      {error && <p className="text-red-600 text-sm mb-3 bg-red-50 p-2 rounded">{error}</p>}
+      <form
+        onSubmit={registrarGasto}
+        className="bg-white p-4 rounded shadow grid grid-cols-3 gap-3"
+      >
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Tercero (a quién se paga) *
+          </label>
+          <select
+            required
+            value={form.tercero_nit}
+            onChange={(e) => setForm({ ...form, tercero_nit: e.target.value })}
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          >
+            <option value="">-- Seleccionar --</option>
+            {terceros.map((t) => (
+              <option key={t.nit} value={t.nit}>
+                {t.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Gerencia *</label>
+          <select
+            required
+            value={form.gerencia_id}
+            onChange={(e) => setForm({ ...form, gerencia_id: e.target.value })}
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          >
+            <option value="">-- Seleccionar --</option>
+            {gerencias.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Tipo de gasto *</label>
+          <select
+            required
+            value={form.tipo_gasto_id}
+            onChange={(e) => setForm({ ...form, tipo_gasto_id: e.target.value })}
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          >
+            <option value="">-- Seleccionar --</option>
+            {tiposGasto.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Categoría *</label>
+          <select
+            required
+            value={form.categoria_gasto_id}
+            onChange={(e) => setForm({ ...form, categoria_gasto_id: e.target.value })}
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          >
+            <option value="">-- Seleccionar --</option>
+            {categoriasGasto.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="col-span-2">
+          <label className="block text-xs font-medium text-gray-600 mb-1">Descripción *</label>
+          <input
+            type="text"
+            required
+            value={form.descripcion}
+            onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Valor base ($) *</label>
+          <input
+            type="number"
+            required
+            min="1"
+            value={form.valor_base}
+            onChange={(e) => setForm({ ...form, valor_base: e.target.value })}
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">IVA ($)</label>
+          <input
+            type="number"
+            min="0"
+            value={form.iva}
+            onChange={(e) => setForm({ ...form, iva: e.target.value })}
+            placeholder="0"
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Fecha de pago</label>
+          <input
+            type="date"
+            value={form.fecha_pago}
+            onChange={(e) => setForm({ ...form, fecha_pago: e.target.value })}
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Periodo mes</label>
+          <select
+            value={form.periodo_mes}
+            onChange={(e) => setForm({ ...form, periodo_mes: e.target.value })}
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          >
+            {MESES.map((m, i) => (
+              <option key={i + 1} value={i + 1}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Periodo año</label>
+          <select
+            value={form.periodo_anio}
+            onChange={(e) => setForm({ ...form, periodo_anio: e.target.value })}
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          >
+            {[2024, 2025, 2026, 2027].map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Método de pago</label>
+          <select
+            value={form.metodo_pago_id}
+            onChange={(e) => setForm({ ...form, metodo_pago_id: e.target.value })}
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          >
+            <option value="">-- Seleccionar --</option>
+            {metodosPago.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Referencia/Factura</label>
+          <input
+            type="text"
+            value={form.referencia_pago}
+            onChange={(e) => setForm({ ...form, referencia_pago: e.target.value })}
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Notas</label>
+          <input
+            type="text"
+            value={form.notas}
+            onChange={(e) => setForm({ ...form, notas: e.target.value })}
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          />
+        </div>
+        <div className="flex items-end">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.recurrente === 1}
+              onChange={(e) => setForm({ ...form, recurrente: e.target.checked ? 1 : 0 })}
+            />
+            Gasto recurrente
+          </label>
+        </div>
+        <div className="col-span-3 flex justify-end">
+          <button type="submit" className="bg-gray-900 text-white px-4 py-2 rounded text-sm">
+            Registrar gasto
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
