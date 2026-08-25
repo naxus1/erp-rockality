@@ -108,6 +108,18 @@ export default function Catalogos() {
     }
   };
 
+  const reactivar = async (id: number, nombre: string) => {
+    setError('');
+    setSuccess('');
+    try {
+      await api.patch(`/catalogos/${selected.key}/${id}/activar`);
+      setSuccess(`"${nombre.replace(' (inactivo)', '')}" reactivado`);
+      cargar();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+    }
+  };
+
   return (
     <div>
       <h2 className="text-lg font-bold mb-4">Catálogos</h2>
@@ -226,6 +238,14 @@ export default function Catalogos() {
                               </button>
                             )}
                           </>
+                        )}
+                        {item.nombre.includes('(inactivo)') && !selected.useOwnEndpoint && (
+                          <button
+                            onClick={() => reactivar(item.id, item.nombre)}
+                            className="text-xs text-green-600 hover:underline"
+                          >
+                            Activar
+                          </button>
                         )}
                       </td>
                     </tr>
