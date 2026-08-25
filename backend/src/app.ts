@@ -23,7 +23,7 @@ app.use(helmet());
 app.use(
   cors({
     origin: config.allowedOrigins.split(','),
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   }),
 );
@@ -45,6 +45,15 @@ app.use((_req, res) => {
   res.status(404).json({
     success: false,
     error: 'Ruta no encontrada',
+  });
+});
+
+// ── Error handler global (evita stack traces en producción) ──
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('[ERROR]', err.message);
+  res.status(500).json({
+    success: false,
+    error: config.isProduction ? 'Error interno del servidor' : err.message,
   });
 });
 

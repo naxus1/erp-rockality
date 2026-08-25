@@ -51,6 +51,18 @@ router.post('/', (req: Request, res: Response) => {
 // PUT /api/usuarios/:id
 router.put('/:id', (req: Request, res: Response) => {
   const { nombre, email, rol, activo } = req.body;
+
+  // Validar rol si se proporciona
+  if (rol && !['admin', 'gerente', 'vendedor'].includes(rol)) {
+    res.status(400).json({ success: false, error: 'Rol debe ser: admin, gerente o vendedor' });
+    return;
+  }
+  // Validar activo si se proporciona
+  if (activo !== undefined && ![0, 1].includes(activo)) {
+    res.status(400).json({ success: false, error: 'activo debe ser 0 o 1' });
+    return;
+  }
+
   const db = getDatabase();
   const current = db.prepare('SELECT * FROM usuarios_sistema WHERE id = ?').get(req.params.id) as
     | Usuario
