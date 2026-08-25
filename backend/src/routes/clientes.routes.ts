@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import * as repo from '../repositories/clientes.repository.js';
+import { getDatabase } from '../db/connection.js';
 import { validate } from '../middleware/validate.js';
 import { createClienteSchema, updateClienteSchema } from '../schemas/clientes.schema.js';
 
@@ -65,7 +66,26 @@ router.delete('/:cedula', (req: Request, res: Response) => {
   res.json({ success: true, message: 'Cliente desactivado' });
 });
 
-// POST /api/clientes/:cedula/anonimizar — Derecho de supresión (Habeas Data)
+// GET /api/clientes/:cedula/ficha — Ficha completa del cliente
+router.get('/:cedula/ficha', (req: Request, res: Response) => {
+  const cliente = repo.findByCedula(req.params.cedula);
+  if (!cliente) {
+    res.status(404).json({ success: false, error: 'Cliente no encontrado' });
+    return;
+  }
+  const db = getDatabase();
+  const ventas = db
+    .prepare(
+      'SELECT id, fecha, total, estado, tipo FROM ventas WHERE cliente_cedula = ? ORDER BY fecha DESC',
+    )
+    .all(req.params.cedula);
+  const suscripciones = db
+    .prepare(
+      "SELECT s.*, p.nombre as plan_nombre, p.modalidad as plan_modalidad, CAST(julianday(s.fecha_fin) - julianday('now') AS INTEGER) as dias_restantes FROM suscripciones s JOIN planes p ON s.plan_id = p.id WHERE s.cliente_cedula = ? ORDER BY s.fecha_inicio DESC",
+    )
+    .all(req.params.cedula);
+  res.json({ success: true, data: { cliente, ventas, suscripciones } });
+});
 router.post('/:cedula/anonimizar', (req: Request, res: Response) => {
   const result = repo.anonimizar(req.params.cedula);
   if (!result) {
