@@ -97,6 +97,8 @@ CREATE TABLE clientes (
   consentimiento_fecha TEXT,
   notas TEXT,                                      -- notas generales
   notas_salud TEXT,                                -- lesiones, restricciones, condiciones médicas
+  instagram TEXT,                                  -- @usuario o URL (opcional)
+  linkedin TEXT,                                   -- URL perfil (opcional)
   activo INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   created_by TEXT,
