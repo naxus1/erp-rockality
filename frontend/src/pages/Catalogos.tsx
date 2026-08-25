@@ -5,8 +5,6 @@ interface CatalogoItem {
   id: number;
   nombre: string;
   descripcion?: string;
-  abreviatura?: string;
-  prefijo_sku?: string;
 }
 interface ApiResponse<T> {
   success: boolean;
@@ -14,65 +12,32 @@ interface ApiResponse<T> {
 }
 
 const CATALOGOS = [
-  { key: 'ciudades', label: 'Ciudades', endpoint: '/catalogos/ciudades', canAdd: true },
-  {
-    key: 'categorias-producto',
-    label: 'Categorías de producto',
-    endpoint: '/categorias-producto',
-    canAdd: true,
-    hasDesc: true,
-  },
-  {
-    key: 'unidades-medida',
-    label: 'Unidades de medida',
-    endpoint: '/catalogos/unidades-medida',
-    canAdd: false,
-  },
-  {
-    key: 'metodos-pago',
-    label: 'Métodos de pago',
-    endpoint: '/catalogos/metodos-pago',
-    canAdd: false,
-  },
-  {
-    key: 'canales-captacion',
-    label: 'Canales de captación',
-    endpoint: '/catalogos/canales-captacion',
-    canAdd: false,
-  },
-  { key: 'gerencias', label: 'Gerencias', endpoint: '/catalogos/gerencias', canAdd: false },
-  {
-    key: 'tipos-gasto',
-    label: 'Tipos de gasto',
-    endpoint: '/catalogos/tipos-gasto',
-    canAdd: false,
-  },
-  {
-    key: 'categorias-gasto',
-    label: 'Categorías de gasto',
-    endpoint: '/catalogos/categorias-gasto',
-    canAdd: false,
-  },
-  {
-    key: 'tipos-tercero',
-    label: 'Tipos de tercero',
-    endpoint: '/catalogos/tipos-tercero',
-    canAdd: false,
-  },
-  { key: 'sexos', label: 'Sexos', endpoint: '/catalogos/sexos', canAdd: false },
+  { key: 'ciudades', label: 'Ciudades' },
+  { key: 'categorias-producto', label: 'Categorías de producto', useOwnEndpoint: true },
+  { key: 'unidades-medida', label: 'Unidades de medida' },
+  { key: 'metodos-pago', label: 'Métodos de pago' },
+  { key: 'canales-captacion', label: 'Canales de captación' },
+  { key: 'gerencias', label: 'Gerencias' },
+  { key: 'tipos-gasto', label: 'Tipos de gasto' },
+  { key: 'categorias-gasto', label: 'Categorías de gasto' },
+  { key: 'tipos-tercero', label: 'Tipos de tercero' },
+  { key: 'sexos', label: 'Sexos' },
 ];
 
 export default function Catalogos() {
   const [selected, setSelected] = useState(CATALOGOS[0]);
   const [items, setItems] = useState<CatalogoItem[]>([]);
   const [nuevoNombre, setNuevoNombre] = useState('');
-  const [nuevaDesc, setNuevaDesc] = useState('');
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [editandoNombre, setEditandoNombre] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const endpoint = selected.useOwnEndpoint ? '/categorias-producto' : `/catalogos/${selected.key}`;
+
   const cargar = async () => {
     try {
-      const res = await api.get<ApiResponse<CatalogoItem[]>>(selected.endpoint);
+      const res = await api.get<ApiResponse<CatalogoItem[]>>(endpoint);
       setItems(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
@@ -83,6 +48,7 @@ export default function Catalogos() {
     cargar();
     setError('');
     setSuccess('');
+    setEditandoId(null);
   }, [selected]);
 
   const agregar = async () => {
@@ -93,20 +59,52 @@ export default function Catalogos() {
     setError('');
     setSuccess('');
     try {
-      if (selected.key === 'ciudades') {
-        await api.post('/catalogos/ciudades', { nombre: nuevoNombre });
-      } else if (selected.key === 'categorias-producto') {
-        await api.post('/categorias-producto', {
-          nombre: nuevoNombre,
-          descripcion: nuevaDesc || undefined,
-        });
+      if (selected.useOwnEndpoint) {
+        await api.post('/categorias-producto', { nombre: nuevoNombre });
+      } else {
+        await api.post(`/catalogos/${selected.key}`, { nombre: nuevoNombre });
       }
       setSuccess(`"${nuevoNombre}" agregado`);
       setNuevoNombre('');
-      setNuevaDesc('');
       cargar();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al agregar');
+    }
+  };
+
+  const guardarEdicion = async () => {
+    if (!editandoNombre.trim() || !editandoId) return;
+    setError('');
+    setSuccess('');
+    try {
+      if (selected.useOwnEndpoint) {
+        await api.put(`/categorias-producto/${editandoId}`, { nombre: editandoNombre });
+      } else {
+        await api.put(`/catalogos/${selected.key}/${editandoId}`, { nombre: editandoNombre });
+      }
+      setSuccess('Actualizado');
+      setEditandoId(null);
+      cargar();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al editar');
+    }
+  };
+
+  const desactivar = async (id: number, nombre: string) => {
+    if (
+      !window.confirm(
+        `¿Desactivar "${nombre}"? No se eliminará pero dejará de aparecer en nuevos registros.`,
+      )
+    )
+      return;
+    setError('');
+    setSuccess('');
+    try {
+      await api.delete(`/catalogos/${selected.key}/${id}`);
+      setSuccess(`"${nombre}" desactivado`);
+      cargar();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
     }
   };
 
@@ -115,7 +113,7 @@ export default function Catalogos() {
       <h2 className="text-lg font-bold mb-4">Catálogos</h2>
 
       <div className="flex gap-4">
-        {/* Sidebar de catálogos */}
+        {/* Sidebar */}
         <div className="w-48 space-y-1">
           {CATALOGOS.map((cat) => (
             <button
@@ -137,42 +135,32 @@ export default function Catalogos() {
             <p className="text-green-600 text-sm mb-2 bg-green-50 p-2 rounded">{success}</p>
           )}
 
-          {/* Formulario agregar */}
-          {selected.canAdd && (
-            <div className="flex gap-2 mb-3">
-              <input
-                type="text"
-                value={nuevoNombre}
-                onChange={(e) => setNuevoNombre(e.target.value)}
-                placeholder="Nombre"
-                className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm"
-              />
-              {selected.hasDesc && (
-                <input
-                  type="text"
-                  value={nuevaDesc}
-                  onChange={(e) => setNuevaDesc(e.target.value)}
-                  placeholder="Descripción (opcional)"
-                  className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm"
-                />
-              )}
-              <button
-                onClick={agregar}
-                className="bg-gray-900 text-white px-3 py-1.5 rounded text-sm"
-              >
-                Agregar
-              </button>
-            </div>
-          )}
+          {/* Agregar */}
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              value={nuevoNombre}
+              onChange={(e) => setNuevoNombre(e.target.value)}
+              placeholder="Nuevo nombre"
+              onKeyDown={(e) => e.key === 'Enter' && agregar()}
+              className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm"
+            />
+            <button
+              onClick={agregar}
+              className="bg-gray-900 text-white px-3 py-1.5 rounded text-sm"
+            >
+              Agregar
+            </button>
+          </div>
 
           {/* Tabla */}
           <div className="bg-white rounded shadow overflow-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-100 text-left">
                 <tr>
-                  <th className="px-3 py-2">ID</th>
+                  <th className="px-3 py-2 w-12">ID</th>
                   <th className="px-3 py-2">Nombre</th>
-                  {selected.hasDesc && <th className="px-3 py-2">Descripción</th>}
+                  <th className="px-3 py-2 w-32"></th>
                 </tr>
               </thead>
               <tbody>
@@ -186,12 +174,60 @@ export default function Catalogos() {
                   items.map((item) => (
                     <tr key={item.id} className="border-t border-gray-100">
                       <td className="px-3 py-2 font-mono text-xs">{item.id}</td>
-                      <td className="px-3 py-2">{item.nombre}</td>
-                      {selected.hasDesc && (
-                        <td className="px-3 py-2 text-xs text-gray-500">
-                          {item.descripcion || '-'}
-                        </td>
-                      )}
+                      <td className="px-3 py-2">
+                        {editandoId === item.id ? (
+                          <div className="flex gap-1">
+                            <input
+                              type="text"
+                              value={editandoNombre}
+                              onChange={(e) => setEditandoNombre(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && guardarEdicion()}
+                              className="flex-1 border border-gray-300 rounded px-2 py-0.5 text-sm"
+                              autoFocus
+                            />
+                            <button onClick={guardarEdicion} className="text-xs text-green-600">
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => setEditandoId(null)}
+                              className="text-xs text-gray-400"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            className={
+                              item.nombre.includes('(inactivo)') ? 'text-gray-400 line-through' : ''
+                            }
+                          >
+                            {item.nombre}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {editandoId !== item.id && !item.nombre.includes('(inactivo)') && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditandoId(item.id);
+                                setEditandoNombre(item.nombre);
+                              }}
+                              className="text-xs text-blue-600 hover:underline mr-2"
+                            >
+                              Editar
+                            </button>
+                            {!selected.useOwnEndpoint && (
+                              <button
+                                onClick={() => desactivar(item.id, item.nombre)}
+                                className="text-xs text-red-500 hover:underline"
+                              >
+                                Desactivar
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
