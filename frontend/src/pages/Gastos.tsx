@@ -179,7 +179,7 @@ export default function Gastos() {
               setError('');
               setSuccess('');
             }}
-            className="bg-gray-900 text-white px-3 py-1.5 rounded text-sm"
+            className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
           >
             + Registrar gasto
           </button>
@@ -195,7 +195,7 @@ export default function Gastos() {
           <select
             value={filtroMes}
             onChange={(e) => setFiltroMes(e.target.value)}
-            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             {MESES.map((m, i) => (
               <option key={i + 1} value={i + 1}>
@@ -206,7 +206,7 @@ export default function Gastos() {
           <select
             value={filtroAnio}
             onChange={(e) => setFiltroAnio(e.target.value)}
-            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             {[2024, 2025, 2026, 2027].map((y) => (
               <option key={y} value={y}>
@@ -217,7 +217,7 @@ export default function Gastos() {
           <select
             value={filtroGerencia}
             onChange={(e) => setFiltroGerencia(e.target.value)}
-            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             <option value="">Todas las gerencias</option>
             {gerencias.map((g) => (
@@ -229,9 +229,9 @@ export default function Gastos() {
           <span className="ml-auto text-sm font-bold">Total mes: {formatCOP(totalMes)}</span>
         </div>
 
-        <div className="bg-white rounded shadow overflow-auto">
+        <div className="rounded-xl neu-flat overflow-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-100 text-left">
+            <thead className="text-left text-gray-500">
               <tr>
                 <th className="px-3 py-2">Fecha</th>
                 <th className="px-3 py-2">Tercero</th>
@@ -288,10 +288,7 @@ export default function Gastos() {
         </button>
       </div>
       {error && <p className="text-red-600 text-sm mb-3 bg-red-50 p-2 rounded">{error}</p>}
-      <form
-        onSubmit={registrarGasto}
-        className="bg-white p-4 rounded shadow grid grid-cols-3 gap-3"
-      >
+      <form onSubmit={registrarGasto} className="p-4 rounded-xl neu-flat grid grid-cols-3 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">
             Tercero (a quién se paga) *
@@ -300,7 +297,7 @@ export default function Gastos() {
             required
             value={form.tercero_nit}
             onChange={(e) => setForm({ ...form, tercero_nit: e.target.value })}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             <option value="">-- Seleccionar --</option>
             {terceros.map((t) => (
@@ -316,7 +313,7 @@ export default function Gastos() {
             required
             value={form.gerencia_id}
             onChange={(e) => setForm({ ...form, gerencia_id: e.target.value })}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             <option value="">-- Seleccionar --</option>
             {gerencias.map((g) => (
@@ -332,7 +329,7 @@ export default function Gastos() {
             required
             value={form.tipo_gasto_id}
             onChange={(e) => setForm({ ...form, tipo_gasto_id: e.target.value })}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             <option value="">-- Seleccionar --</option>
             {tiposGasto.map((t) => (
@@ -348,7 +345,7 @@ export default function Gastos() {
             required
             value={form.categoria_gasto_id}
             onChange={(e) => setForm({ ...form, categoria_gasto_id: e.target.value })}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             <option value="">-- Seleccionar --</option>
             {categoriasGasto.map((c) => (
@@ -365,7 +362,7 @@ export default function Gastos() {
             required
             value={form.descripcion}
             onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           />
         </div>
         <div>
@@ -376,7 +373,7 @@ export default function Gastos() {
             min="1"
             value={form.valor_base}
             onChange={(e) => setForm({ ...form, valor_base: e.target.value })}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           />
         </div>
         <div>
@@ -387,7 +384,7 @@ export default function Gastos() {
             value={form.iva}
             onChange={(e) => setForm({ ...form, iva: e.target.value })}
             placeholder="0"
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           />
         </div>
         <div>
@@ -396,7 +393,7 @@ export default function Gastos() {
             type="date"
             value={form.fecha_pago}
             onChange={(e) => setForm({ ...form, fecha_pago: e.target.value })}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           />
         </div>
         <div>
@@ -404,7 +401,7 @@ export default function Gastos() {
           <select
             value={form.periodo_mes}
             onChange={(e) => setForm({ ...form, periodo_mes: e.target.value })}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             {MESES.map((m, i) => (
               <option key={i + 1} value={i + 1}>
@@ -418,7 +415,7 @@ export default function Gastos() {
           <select
             value={form.periodo_anio}
             onChange={(e) => setForm({ ...form, periodo_anio: e.target.value })}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             {[2024, 2025, 2026, 2027].map((y) => (
               <option key={y} value={y}>
@@ -432,7 +429,7 @@ export default function Gastos() {
           <select
             value={form.metodo_pago_id}
             onChange={(e) => setForm({ ...form, metodo_pago_id: e.target.value })}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             <option value="">-- Seleccionar --</option>
             {metodosPago.map((m) => (
@@ -448,7 +445,7 @@ export default function Gastos() {
             type="text"
             value={form.referencia_pago}
             onChange={(e) => setForm({ ...form, referencia_pago: e.target.value })}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           />
         </div>
         <div>
@@ -457,7 +454,7 @@ export default function Gastos() {
             type="text"
             value={form.notas}
             onChange={(e) => setForm({ ...form, notas: e.target.value })}
-            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           />
         </div>
         <div className="flex items-end">
@@ -471,7 +468,10 @@ export default function Gastos() {
           </label>
         </div>
         <div className="col-span-3 flex justify-end">
-          <button type="submit" className="bg-gray-900 text-white px-4 py-2 rounded text-sm">
+          <button
+            type="submit"
+            className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+          >
             Registrar gasto
           </button>
         </div>

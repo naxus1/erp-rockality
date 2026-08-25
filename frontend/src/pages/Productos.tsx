@@ -216,7 +216,7 @@ export default function Productos() {
         <h2 className="text-lg font-bold">Productos</h2>
         <button
           onClick={showForm ? cerrarForm : abrirCrear}
-          className="bg-gray-900 text-white px-3 py-1.5 rounded text-sm"
+          className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
         >
           {showForm ? 'Cancelar' : '+ Nuevo producto'}
         </button>
@@ -228,7 +228,7 @@ export default function Productos() {
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="bg-white p-4 rounded shadow mb-4 grid grid-cols-3 gap-3"
+          className="p-4 rounded-xl neu-flat mb-4 grid grid-cols-3 gap-3"
         >
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -240,7 +240,7 @@ export default function Productos() {
               onChange={(e) => setForm({ ...form, sku: e.target.value.toUpperCase() })}
               disabled={!!editando}
               placeholder="Se genera automáticamente"
-              className={`w-full border border-gray-300 rounded px-2 py-1.5 text-sm font-mono ${editando ? 'bg-gray-100' : 'bg-gray-50'}`}
+              className={`w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none font-mono ${editando ? 'bg-gray-100' : 'bg-gray-50'}`}
             />
           </div>
           <div>
@@ -250,7 +250,7 @@ export default function Productos() {
               required
               value={form.nombre}
               onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -259,7 +259,7 @@ export default function Productos() {
               required
               value={form.categoria_id}
               onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Seleccionar --</option>
               {categorias.map((c) => (
@@ -277,7 +277,7 @@ export default function Productos() {
               required
               value={form.unidad_medida_id}
               onChange={(e) => setForm({ ...form, unidad_medida_id: e.target.value })}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Seleccionar --</option>
               {unidades.map((u) => (
@@ -292,7 +292,7 @@ export default function Productos() {
             <select
               value={form.proveedor_nit}
               onChange={(e) => setForm({ ...form, proveedor_nit: e.target.value })}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Sin proveedor --</option>
               {proveedores.map((p) => (
@@ -313,7 +313,7 @@ export default function Productos() {
               value={form.precio_venta}
               onChange={(e) => setForm({ ...form, precio_venta: e.target.value })}
               placeholder="85000"
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -327,7 +327,7 @@ export default function Productos() {
               value={form.precio_costo}
               onChange={(e) => setForm({ ...form, precio_costo: e.target.value })}
               placeholder="50000"
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -338,7 +338,7 @@ export default function Productos() {
               value={form.stock_actual}
               onChange={(e) => setForm({ ...form, stock_actual: e.target.value })}
               placeholder="0"
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -348,7 +348,7 @@ export default function Productos() {
               min="0"
               value={form.stock_minimo}
               onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div className="flex items-center gap-4">
@@ -367,12 +367,15 @@ export default function Productos() {
                 max="100"
                 value={form.porcentaje_iva}
                 onChange={(e) => setForm({ ...form, porcentaje_iva: e.target.value })}
-                className="w-16 border border-gray-300 rounded px-2 py-1.5 text-sm"
+                className="w-16 bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               />
             )}
           </div>
           <div className="col-span-2 flex justify-end">
-            <button type="submit" className="bg-gray-900 text-white px-4 py-1.5 rounded text-sm">
+            <button
+              type="submit"
+              className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+            >
               {editando ? 'Actualizar' : 'Guardar'}
             </button>
           </div>
@@ -384,7 +387,7 @@ export default function Productos() {
         <select
           value={filtroCategoria}
           onChange={(e) => setFiltroCategoria(e.target.value)}
-          className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+          className="bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
         >
           <option value="">Todas las categorías</option>
           {categorias.map((c) => (
@@ -396,7 +399,7 @@ export default function Productos() {
         <select
           value={filtroStock}
           onChange={(e) => setFiltroStock(e.target.value)}
-          className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+          className="bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
         >
           <option value="">Todo el stock</option>
           <option value="bajo">Stock bajo</option>
@@ -419,9 +422,9 @@ export default function Productos() {
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded shadow overflow-auto">
+      <div className="rounded-xl neu-flat overflow-auto">
         <table className="w-full text-sm">
-          <thead className="bg-gray-100 text-left">
+          <thead className="text-left text-gray-500">
             <tr>
               <th className="px-3 py-2">SKU</th>
               <th

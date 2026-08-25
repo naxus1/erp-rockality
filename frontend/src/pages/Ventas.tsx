@@ -326,7 +326,7 @@ export default function Ventas() {
         <div className="grid grid-cols-3 gap-4">
           {/* Info + Items */}
           <div className="col-span-2 space-y-4">
-            <div className="bg-white p-4 rounded shadow">
+            <div className="p-4 rounded-xl neu-flat">
               <div className="grid grid-cols-3 gap-3 text-sm mb-3">
                 <div>
                   <span className="text-gray-500">Cliente:</span>{' '}
@@ -354,7 +354,7 @@ export default function Ventas() {
             </div>
 
             {/* Items */}
-            <div className="bg-white p-4 rounded shadow">
+            <div className="p-4 rounded-xl neu-flat">
               <h3 className="text-sm font-medium mb-2">Items</h3>
               <table className="w-full text-sm">
                 <thead className="text-xs text-gray-500 text-left">
@@ -401,7 +401,7 @@ export default function Ventas() {
             </div>
 
             {/* Historial de pagos */}
-            <div className="bg-white p-4 rounded shadow">
+            <div className="p-4 rounded-xl neu-flat">
               <h3 className="text-sm font-medium mb-2">Pagos realizados</h3>
               {ventaDetalle.pagos.length === 0 ? (
                 <p className="text-xs text-gray-400">No hay pagos registrados.</p>
@@ -432,7 +432,7 @@ export default function Ventas() {
 
           {/* Columna derecha: resumen pagos + registrar pago */}
           <div className="space-y-4">
-            <div className="bg-white p-4 rounded shadow">
+            <div className="p-4 rounded-xl neu-flat">
               <h3 className="text-sm font-medium mb-3">Resumen de pagos</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
@@ -456,7 +456,7 @@ export default function Ventas() {
 
             {/* Registrar pago (solo si hay saldo pendiente) */}
             {ventaDetalle.saldo_pendiente > 0 && ventaDetalle.estado !== 'anulada' && (
-              <div className="bg-white p-4 rounded shadow">
+              <div className="p-4 rounded-xl neu-flat">
                 <h3 className="text-sm font-medium mb-2">Registrar pago</h3>
                 <div className="space-y-2">
                   <input
@@ -465,12 +465,12 @@ export default function Ventas() {
                     value={nuevopagoMonto}
                     onChange={(e) => setNuevopagoMonto(e.target.value)}
                     placeholder={`Máx: ${(ventaDetalle.saldo_pendiente / 100).toLocaleString()}`}
-                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                    className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                   />
                   <select
                     value={nuevopagoMetodo}
                     onChange={(e) => setNuevopagoMetodo(e.target.value)}
-                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                    className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                   >
                     <option value="">-- Método --</option>
                     {metodosPago.map((m) => (
@@ -484,7 +484,7 @@ export default function Ventas() {
                     value={nuevopagoRef}
                     onChange={(e) => setNuevopagoRef(e.target.value)}
                     placeholder="Referencia (opcional)"
-                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                    className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                   />
                   <button
                     onClick={registrarPago}
@@ -523,7 +523,7 @@ export default function Ventas() {
               setError('');
               setSuccess('');
             }}
-            className="bg-gray-900 text-white px-3 py-1.5 rounded text-sm"
+            className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
           >
             + Nueva venta
           </button>
@@ -539,7 +539,7 @@ export default function Ventas() {
           <select
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
-            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             <option value="">Todos los estados</option>
             <option value="pendiente">Pendiente</option>
@@ -549,7 +549,7 @@ export default function Ventas() {
           <select
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
-            className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+            className="bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             <option value="">Todos los tipos</option>
             <option value="nueva">Nueva</option>
@@ -569,9 +569,9 @@ export default function Ventas() {
           <span className="ml-auto text-xs text-gray-400">{ventas.length} resultado(s)</span>
         </div>
 
-        <div className="bg-white rounded shadow overflow-auto">
+        <div className="rounded-xl neu-flat overflow-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-100 text-left">
+            <thead className="text-left text-gray-500">
               <tr>
                 <th className="px-3 py-2">#</th>
                 <th
@@ -686,7 +686,7 @@ export default function Ventas() {
       <div className="grid grid-cols-3 gap-4">
         <div className="col-span-2 space-y-4">
           {/* Cliente */}
-          <div className="bg-white p-4 rounded shadow">
+          <div className="p-4 rounded-xl neu-flat">
             <h3 className="text-sm font-medium mb-2">Cliente (opcional)</h3>
             <div className="flex gap-2">
               <input
@@ -694,7 +694,7 @@ export default function Ventas() {
                 value={busquedaCliente}
                 onChange={(e) => setBusquedaCliente(e.target.value)}
                 placeholder="Buscar por nombre o cédula..."
-                className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm"
+                className="flex-1 bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               />
               {clienteCedula && (
                 <button
@@ -728,14 +728,14 @@ export default function Ventas() {
           </div>
 
           {/* Productos */}
-          <div className="bg-white p-4 rounded shadow">
+          <div className="p-4 rounded-xl neu-flat">
             <h3 className="text-sm font-medium mb-2">Agregar productos</h3>
             <select
               onChange={(e) => {
                 if (e.target.value) agregarProducto(e.target.value);
                 e.target.value = '';
               }}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Seleccionar producto --</option>
               {productos
@@ -754,7 +754,7 @@ export default function Ventas() {
                     if (e.target.value) agregarPlan(Number(e.target.value));
                     e.target.value = '';
                   }}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                  className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 >
                   <option value="">-- Seleccionar plan --</option>
                   {planes.map((p) => (
@@ -769,7 +769,7 @@ export default function Ventas() {
 
           {/* Items */}
           {items.length > 0 && (
-            <div className="bg-white p-4 rounded shadow">
+            <div className="p-4 rounded-xl neu-flat">
               <h3 className="text-sm font-medium mb-2">Items</h3>
               <table className="w-full text-sm">
                 <thead className="text-left text-xs text-gray-500">
@@ -815,25 +815,25 @@ export default function Ventas() {
 
         {/* Columna derecha */}
         <div className="space-y-4">
-          <div className="bg-white p-4 rounded shadow">
+          <div className="p-4 rounded-xl neu-flat">
             <h3 className="text-sm font-medium mb-3">Resumen</h3>
             <div className="flex justify-between text-lg font-bold">
               <span>Total:</span>
               <span>{formatCOP(totalVenta)}</span>
             </div>
           </div>
-          <div className="bg-white p-4 rounded shadow">
+          <div className="p-4 rounded-xl neu-flat">
             <h3 className="text-sm font-medium mb-2">Tipo</h3>
             <select
               value={tipo}
               onChange={(e) => setTipo(e.target.value as 'nueva' | 'recompra')}
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="nueva">Nueva</option>
               <option value="recompra">Recompra</option>
             </select>
           </div>
-          <div className="bg-white p-4 rounded shadow">
+          <div className="p-4 rounded-xl neu-flat">
             <h3 className="text-sm font-medium mb-2">Pago (opcional)</h3>
             <p className="text-xs text-gray-400 mb-2">Sin pago = queda pendiente.</p>
             <div className="space-y-2">
@@ -843,12 +843,12 @@ export default function Ventas() {
                 value={pagoMonto}
                 onChange={(e) => setPagoMonto(e.target.value)}
                 placeholder="Monto en pesos"
-                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               />
               <select
                 value={pagoMetodo}
                 onChange={(e) => setPagoMetodo(e.target.value)}
-                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               >
                 <option value="">-- Método --</option>
                 {metodosPago.map((m) => (
@@ -859,14 +859,14 @@ export default function Ventas() {
               </select>
             </div>
           </div>
-          <div className="bg-white p-4 rounded shadow">
+          <div className="p-4 rounded-xl neu-flat">
             <h3 className="text-sm font-medium mb-2">Notas</h3>
             <input
               type="text"
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
               placeholder="Opcional..."
-              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <button

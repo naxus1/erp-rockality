@@ -155,18 +155,18 @@ export default function Catalogos() {
               onChange={(e) => setNuevoNombre(e.target.value)}
               placeholder="Nuevo nombre"
               onKeyDown={(e) => e.key === 'Enter' && agregar()}
-              className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm"
+              className="flex-1 bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
             <button
               onClick={agregar}
-              className="bg-gray-900 text-white px-3 py-1.5 rounded text-sm"
+              className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
             >
               Agregar
             </button>
           </div>
 
           {/* Tabla */}
-          <div className="bg-white rounded shadow overflow-auto">
+          <div className="rounded-xl neu-flat overflow-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-100 text-left">
                 <tr>

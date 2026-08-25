@@ -44,10 +44,10 @@ function KpiCard({
   color?: string;
 }) {
   return (
-    <div className="bg-white p-4 rounded shadow">
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <p className={`text-xl font-bold ${color || 'text-gray-900'}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    <div className="p-4 rounded-xl neu-flat">
+      <p className="text-[11px] text-gray-500 mb-1">{label}</p>
+      <p className={`text-xl font-bold ${color || 'text-gray-700'}`}>{value}</p>
+      {sub && <p className="text-[10px] text-gray-400 mt-1">{sub}</p>}
     </div>
   );
 }
