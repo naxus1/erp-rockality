@@ -28,11 +28,14 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#e0e5ec]">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="w-full max-w-sm p-8 rounded-2xl neu-flat">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-700">Rockality</h1>
-          <p className="text-xs text-gray-400 mt-1">ERP Gimnasio</p>
+          <div className="w-12 h-12 rounded-xl bg-indigo-500 text-white font-bold text-lg flex items-center justify-center mx-auto mb-3">
+            R
+          </div>
+          <h1 className="text-2xl font-bold text-slate-800">Rockality</h1>
+          <p className="text-xs text-slate-400 mt-1">ERP Gimnasio</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -45,7 +48,7 @@ export default function Login() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-[#e0e5ec] rounded-lg px-4 py-2.5 text-sm text-gray-700 neu-pressed outline-none focus:ring-2 focus:ring-blue-300/50"
+              className="w-full rounded-lg px-4 py-2.5 text-sm text-gray-700 neu-pressed outline-none focus:ring-2 focus:ring-blue-300/50"
               autoComplete="username"
             />
           </div>
@@ -59,7 +62,7 @@ export default function Login() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[#e0e5ec] rounded-lg px-4 py-2.5 text-sm text-gray-700 neu-pressed outline-none focus:ring-2 focus:ring-blue-300/50"
+              className="w-full rounded-lg px-4 py-2.5 text-sm text-gray-700 neu-pressed outline-none focus:ring-2 focus:ring-blue-300/50"
               autoComplete="current-password"
             />
           </div>
@@ -68,7 +71,7 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full bg-[#e0e5ec] text-gray-700 font-medium py-2.5 rounded-lg text-sm neu-btn transition-all hover:text-gray-900"
+            className="w-full text-gray-700 font-medium py-2.5 rounded-lg text-sm neu-btn transition-all hover:text-gray-900"
           >
             Iniciar sesión
           </button>

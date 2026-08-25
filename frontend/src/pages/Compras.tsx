@@ -184,7 +184,7 @@ export default function Compras() {
               setError('');
               setSuccess('');
             }}
-            className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+            className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
           >
             + Nueva compra
           </button>
@@ -287,7 +287,7 @@ export default function Compras() {
             <select
               value={terceroNit}
               onChange={(e) => setTerceroNit(e.target.value)}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Seleccionar proveedor --</option>
               {proveedores.map((p) => (
@@ -306,7 +306,7 @@ export default function Compras() {
                 if (e.target.value) agregarProducto(e.target.value);
                 e.target.value = '';
               }}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Seleccionar producto --</option>
               {productos.map((p) => (
@@ -399,7 +399,7 @@ export default function Compras() {
                 value={factura}
                 onChange={(e) => setFactura(e.target.value)}
                 placeholder="Nº factura"
-                className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               />
             </div>
             <div>
@@ -410,7 +410,7 @@ export default function Compras() {
                 value={iva}
                 onChange={(e) => setIva(e.target.value)}
                 placeholder="0"
-                className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               />
             </div>
             <div>
@@ -418,7 +418,7 @@ export default function Compras() {
               <select
                 value={metodoPagoId}
                 onChange={(e) => setMetodoPagoId(e.target.value)}
-                className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               >
                 <option value="">-- Seleccionar --</option>
                 {metodosPago.map((m) => (
@@ -435,7 +435,7 @@ export default function Compras() {
                 value={notas}
                 onChange={(e) => setNotas(e.target.value)}
                 placeholder="Opcional"
-                className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               />
             </div>
           </div>

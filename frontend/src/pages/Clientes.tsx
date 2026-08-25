@@ -258,7 +258,7 @@ export default function Clientes() {
         <h2 className="text-lg font-bold">Clientes</h2>
         <button
           onClick={showForm ? cerrarForm : abrirCrear}
-          className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+          className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
         >
           {showForm ? 'Cancelar' : '+ Nuevo cliente'}
         </button>
@@ -280,7 +280,7 @@ export default function Clientes() {
               value={form.cedula}
               onChange={(e) => setForm({ ...form, cedula: e.target.value })}
               disabled={!!editando}
-              className={`w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none ${editando ? 'bg-gray-100' : ''}`}
+              className={`w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none ${editando ? 'bg-gray-100' : ''}`}
             />
           </div>
           <div>
@@ -290,7 +290,7 @@ export default function Clientes() {
               required
               value={form.nombre}
               onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -300,7 +300,7 @@ export default function Clientes() {
               required
               value={form.apellidos}
               onChange={(e) => setForm({ ...form, apellidos: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -309,7 +309,7 @@ export default function Clientes() {
               type="text"
               value={form.telefono}
               onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -319,7 +319,7 @@ export default function Clientes() {
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               placeholder="ejemplo@correo.com"
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -385,7 +385,7 @@ export default function Clientes() {
               type="text"
               value={form.direccion}
               onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -393,7 +393,7 @@ export default function Clientes() {
             <select
               value={form.ciudad_id}
               onChange={(e) => setForm({ ...form, ciudad_id: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Seleccionar --</option>
               {ciudades.map((c) => (
@@ -408,7 +408,7 @@ export default function Clientes() {
             <select
               value={form.sexo_id}
               onChange={(e) => setForm({ ...form, sexo_id: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Seleccionar --</option>
               {sexos.map((s) => (
@@ -423,7 +423,7 @@ export default function Clientes() {
             <select
               value={form.canal_captacion_id}
               onChange={(e) => setForm({ ...form, canal_captacion_id: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Seleccionar --</option>
               {canales.map((c) => (
@@ -439,7 +439,7 @@ export default function Clientes() {
               type="text"
               value={form.notas}
               onChange={(e) => setForm({ ...form, notas: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -449,7 +449,7 @@ export default function Clientes() {
               value={form.notas_salud}
               onChange={(e) => setForm({ ...form, notas_salud: e.target.value })}
               placeholder="Lesiones, restricciones..."
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -459,7 +459,7 @@ export default function Clientes() {
               value={form.instagram}
               onChange={(e) => setForm({ ...form, instagram: e.target.value })}
               placeholder="@usuario"
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -469,7 +469,7 @@ export default function Clientes() {
               value={form.linkedin}
               onChange={(e) => setForm({ ...form, linkedin: e.target.value })}
               placeholder="URL perfil"
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div className="col-span-3 flex items-center gap-4">
@@ -485,7 +485,7 @@ export default function Clientes() {
             </label>
             <button
               type="submit"
-              className="ml-auto bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+              className="ml-auto text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
             >
               {editando ? 'Actualizar' : 'Guardar'}
             </button>
@@ -500,12 +500,12 @@ export default function Clientes() {
           placeholder="Buscar por nombre, apellido, cédula o teléfono..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="flex-1 max-w-md bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+          className="flex-1 max-w-md rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
         />
         <select
           value={filtroCiudad}
           onChange={(e) => setFiltroCiudad(e.target.value)}
-          className="bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+          className="rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
         >
           <option value="">Todas las ciudades</option>
           {ciudades.map((c) => (
@@ -517,7 +517,7 @@ export default function Clientes() {
         <select
           value={filtroSexo}
           onChange={(e) => setFiltroSexo(e.target.value)}
-          className="bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+          className="rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
         >
           <option value="">Todos</option>
           {sexos.map((s) => (
