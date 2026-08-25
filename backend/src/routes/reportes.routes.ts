@@ -64,6 +64,25 @@ router.get('/dashboard', (_req: Request, res: Response) => {
 
   const saldoPendienteTotal = pendientes.total - pagadoPendientes.total;
 
+  // Detalle de quién debe
+  const deudores = db
+    .prepare(
+      `SELECT v.id, v.total, c.nombre, c.apellidos, c.cedula,
+         COALESCE((SELECT SUM(monto) FROM pagos WHERE venta_id = v.id), 0) as pagado
+       FROM ventas v
+       LEFT JOIN clientes c ON v.cliente_cedula = c.cedula
+       WHERE v.estado = 'pendiente'
+       ORDER BY v.fecha DESC`,
+    )
+    .all() as Array<{
+    id: number;
+    total: number;
+    nombre: string | null;
+    apellidos: string | null;
+    cedula: string | null;
+    pagado: number;
+  }>;
+
   // Stock bajo
   const stockBajo = db
     .prepare(
@@ -83,7 +102,16 @@ router.get('/dashboard', (_req: Request, res: Response) => {
       suscripciones_activas: suscActivas.count,
       suscripciones_por_vencer: porVencer.count,
       clientes_nuevos_mes: clientesNuevos.count,
-      ventas_pendientes: { count: pendientes.count, saldo: saldoPendienteTotal },
+      ventas_pendientes: {
+        count: pendientes.count,
+        saldo: saldoPendienteTotal,
+        deudores: deudores.map((d) => ({
+          venta_id: d.id,
+          cliente: d.nombre ? `${d.nombre} ${d.apellidos}` : 'Sin cliente',
+          cedula: d.cedula,
+          saldo: d.total - d.pagado,
+        })),
+      },
       stock_bajo: stockBajo.count,
       ticket_promedio: ticketPromedio,
     },

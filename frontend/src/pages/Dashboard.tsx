@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
@@ -9,7 +10,11 @@ interface DashboardData {
   suscripciones_activas: number;
   suscripciones_por_vencer: number;
   clientes_nuevos_mes: number;
-  ventas_pendientes: { count: number; saldo: number };
+  ventas_pendientes: {
+    count: number;
+    saldo: number;
+    deudores: Array<{ venta_id: number; cliente: string; cedula: string | null; saldo: number }>;
+  };
   stock_bajo: number;
   ticket_promedio: number;
 }
@@ -49,6 +54,7 @@ function KpiCard({
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState('');
 
@@ -87,11 +93,21 @@ export default function Dashboard() {
             </div>
           )}
           {data.ventas_pendientes.count > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded p-3">
-              <p className="text-xs font-medium text-red-800">
+            <div
+              className="bg-red-50 border border-red-200 rounded p-3 cursor-pointer hover:bg-red-100"
+              onClick={() => navigate('/ventas?estado=pendiente')}
+            >
+              <p className="text-xs font-medium text-red-800 mb-1">
                 ⚠ {data.ventas_pendientes.count} venta(s) pendiente(s) —{' '}
                 {formatCOP(data.ventas_pendientes.saldo)} por cobrar
               </p>
+              <ul className="text-xs text-red-700 space-y-0.5">
+                {data.ventas_pendientes.deudores.map((d) => (
+                  <li key={d.venta_id}>
+                    • {d.cliente} — debe {formatCOP(d.saldo)}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
