@@ -661,7 +661,7 @@ export default function Clientes() {
       {/* Ficha del cliente (modal) */}
       {ficha && (
         <div className="fixed inset-0 bg-black/30 flex items-start justify-center pt-10 z-50">
-          <div className="rounded-xl neu-flat-lg w-full max-w-2xl max-h-[80vh] overflow-auto p-6">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-auto p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold">
                 Ficha: {ficha.cliente.nombre} {ficha.cliente.apellidos}
