@@ -145,7 +145,7 @@ export default function Terceros() {
         <h2 className="text-lg font-bold">Terceros</h2>
         <button
           onClick={showForm ? cerrarForm : abrirCrear}
-          className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+          className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
         >
           {showForm ? 'Cancelar' : '+ Nuevo tercero'}
         </button>
@@ -167,7 +167,7 @@ export default function Terceros() {
               value={form.nit}
               onChange={(e) => setForm({ ...form, nit: e.target.value })}
               disabled={!!editando}
-              className={`w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none ${editando ? 'bg-gray-100' : ''}`}
+              className={`w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none ${editando ? 'bg-gray-100' : ''}`}
             />
           </div>
           <div>
@@ -177,7 +177,7 @@ export default function Terceros() {
               required
               value={form.nombre}
               onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -186,7 +186,7 @@ export default function Terceros() {
               required
               value={form.tipo_tercero_id}
               onChange={(e) => setForm({ ...form, tipo_tercero_id: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Seleccionar --</option>
               {tiposTercero.map((t) => (
@@ -202,7 +202,7 @@ export default function Terceros() {
               type="text"
               value={form.telefono}
               onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -211,7 +211,7 @@ export default function Terceros() {
               type="text"
               value={form.direccion}
               onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
@@ -220,7 +220,7 @@ export default function Terceros() {
               type="text"
               value={form.nombre_contacto}
               onChange={(e) => setForm({ ...form, nombre_contacto: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div className="col-span-2">
@@ -229,13 +229,13 @@ export default function Terceros() {
               type="text"
               value={form.observaciones}
               onChange={(e) => setForm({ ...form, observaciones: e.target.value })}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div className="flex items-end justify-end">
             <button
               type="submit"
-              className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+              className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
             >
               {editando ? 'Actualizar' : 'Guardar'}
             </button>
@@ -250,12 +250,12 @@ export default function Terceros() {
           placeholder="Buscar por nombre, NIT o contacto..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="flex-1 max-w-md bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+          className="flex-1 max-w-md rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
         />
         <select
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
-          className="bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+          className="rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
         >
           <option value="">Todos los tipos</option>
           {tiposTercero.map((t) => (
@@ -299,7 +299,7 @@ export default function Terceros() {
                   <td className="px-3 py-2">
                     <button
                       onClick={() => abrirEditar(t)}
-                      className="text-blue-600 hover:text-blue-800"
+                      className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded-lg transition-colors"
                       title="Editar"
                     >
                       <svg

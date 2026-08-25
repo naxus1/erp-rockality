@@ -465,12 +465,12 @@ export default function Ventas() {
                     value={nuevopagoMonto}
                     onChange={(e) => setNuevopagoMonto(e.target.value)}
                     placeholder={`Máx: ${(ventaDetalle.saldo_pendiente / 100).toLocaleString()}`}
-                    className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                    className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                   />
                   <select
                     value={nuevopagoMetodo}
                     onChange={(e) => setNuevopagoMetodo(e.target.value)}
-                    className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                    className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                   >
                     <option value="">-- Método --</option>
                     {metodosPago.map((m) => (
@@ -484,7 +484,7 @@ export default function Ventas() {
                     value={nuevopagoRef}
                     onChange={(e) => setNuevopagoRef(e.target.value)}
                     placeholder="Referencia (opcional)"
-                    className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                    className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                   />
                   <button
                     onClick={registrarPago}
@@ -523,7 +523,7 @@ export default function Ventas() {
               setError('');
               setSuccess('');
             }}
-            className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+            className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
           >
             + Nueva venta
           </button>
@@ -539,7 +539,7 @@ export default function Ventas() {
           <select
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
-            className="bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+            className="rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             <option value="">Todos los estados</option>
             <option value="pendiente">Pendiente</option>
@@ -549,7 +549,7 @@ export default function Ventas() {
           <select
             value={filtroTipo}
             onChange={(e) => setFiltroTipo(e.target.value)}
-            className="bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+            className="rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
           >
             <option value="">Todos los tipos</option>
             <option value="nueva">Nueva</option>
@@ -652,7 +652,7 @@ export default function Ventas() {
                               e.stopPropagation();
                               anularVenta(v.id);
                             }}
-                            className="text-red-600 hover:text-red-800"
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
                             title="Anular venta"
                           >
                             <svg
@@ -708,7 +708,7 @@ export default function Ventas() {
                 value={busquedaCliente}
                 onChange={(e) => setBusquedaCliente(e.target.value)}
                 placeholder="Buscar por nombre o cédula..."
-                className="flex-1 bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                className="flex-1 rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               />
               {clienteCedula && (
                 <button
@@ -749,7 +749,7 @@ export default function Ventas() {
                 if (e.target.value) agregarProducto(e.target.value);
                 e.target.value = '';
               }}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="">-- Seleccionar producto --</option>
               {productos
@@ -768,7 +768,7 @@ export default function Ventas() {
                     if (e.target.value) agregarPlan(Number(e.target.value));
                     e.target.value = '';
                   }}
-                  className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                  className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 >
                   <option value="">-- Seleccionar plan --</option>
                   {planes.map((p) => (
@@ -841,7 +841,7 @@ export default function Ventas() {
             <select
               value={tipo}
               onChange={(e) => setTipo(e.target.value as 'nueva' | 'recompra')}
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             >
               <option value="nueva">Nueva</option>
               <option value="recompra">Recompra</option>
@@ -857,12 +857,12 @@ export default function Ventas() {
                 value={pagoMonto}
                 onChange={(e) => setPagoMonto(e.target.value)}
                 placeholder="Monto en pesos"
-                className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               />
               <select
                 value={pagoMetodo}
                 onChange={(e) => setPagoMetodo(e.target.value)}
-                className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
               >
                 <option value="">-- Método --</option>
                 {metodosPago.map((m) => (
@@ -880,7 +880,7 @@ export default function Ventas() {
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
               placeholder="Opcional..."
-              className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <button

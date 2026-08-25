@@ -168,7 +168,7 @@ export default function Planes() {
             <h2 className="text-lg font-bold">Planes de entrenamiento</h2>
             <button
               onClick={showForm ? cerrarForm : abrirCrear}
-              className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+              className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
             >
               {showForm ? 'Cancelar' : '+ Nuevo plan'}
             </button>
@@ -186,7 +186,7 @@ export default function Planes() {
                   required
                   value={form.nombre}
                   onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                  className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                  className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 />
               </div>
               <div>
@@ -194,7 +194,7 @@ export default function Planes() {
                 <select
                   value={form.modalidad}
                   onChange={(e) => setForm({ ...form, modalidad: e.target.value })}
-                  className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                  className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 >
                   <option value="presencial">Presencial</option>
                   <option value="virtual">Virtual</option>
@@ -211,7 +211,7 @@ export default function Planes() {
                   min="1"
                   value={form.duracion_dias}
                   onChange={(e) => setForm({ ...form, duracion_dias: e.target.value })}
-                  className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                  className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 />
               </div>
               <div>
@@ -224,7 +224,7 @@ export default function Planes() {
                   min="1"
                   value={form.precio}
                   onChange={(e) => setForm({ ...form, precio: e.target.value })}
-                  className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                  className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 />
               </div>
               <div className="flex items-center gap-3">
@@ -243,7 +243,7 @@ export default function Planes() {
                     max="100"
                     value={form.porcentaje_iva}
                     onChange={(e) => setForm({ ...form, porcentaje_iva: e.target.value })}
-                    className="w-16 bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                    className="w-16 rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                   />
                 )}
               </div>
@@ -253,13 +253,13 @@ export default function Planes() {
                   type="text"
                   value={form.descripcion}
                   onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-                  className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                  className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 />
               </div>
               <div className="col-span-3 flex justify-end">
                 <button
                   type="submit"
-                  className="bg-[#e0e5ec] text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+                  className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
                 >
                   {editando ? 'Actualizar' : 'Guardar'}
                 </button>
@@ -307,7 +307,7 @@ export default function Planes() {
                       <td className="px-3 py-2">
                         <button
                           onClick={() => abrirEditar(p)}
-                          className="text-blue-600 hover:text-blue-800"
+                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded-lg transition-colors"
                           title="Editar"
                         >
                           <svg
