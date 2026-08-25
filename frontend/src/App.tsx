@@ -32,7 +32,6 @@ export default function App() {
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/productos" element={<Productos />} />
             <Route path="/ventas" element={<Ventas />} />
-            <Route path="/pagos" element={<Placeholder />} />
             <Route path="/planes" element={<Planes />} />
             <Route path="/gastos" element={<Gastos />} />
             <Route path="/gastos/nuevo" element={<Gastos />} />

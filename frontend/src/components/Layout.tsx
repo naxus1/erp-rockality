@@ -6,7 +6,6 @@ const NAV_ITEMS = [
   { to: '/clientes', label: 'Clientes', roles: ['admin', 'vendedor'] },
   { to: '/productos', label: 'Productos', roles: ['admin'] },
   { to: '/ventas', label: 'Ventas', roles: ['admin', 'vendedor'] },
-  { to: '/pagos', label: 'Pagos', roles: ['admin', 'vendedor'] },
   { to: '/planes', label: 'Planes', roles: ['admin'] },
   { to: '/gastos', label: 'Gastos', roles: ['admin'] },
   { to: '/compras', label: 'Compras', roles: ['admin', 'vendedor'] },
