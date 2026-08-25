@@ -62,6 +62,32 @@ export default function Clientes() {
   const [canales, setCanales] = useState<Catalogo[]>([]);
   const [form, setForm] = useState(FORM_VACIO);
 
+  const [ficha, setFicha] = useState<{
+    cliente: Cliente;
+    ventas: Array<{ id: number; fecha: string; total: number; estado: string; tipo: string }>;
+    suscripciones: Array<{
+      id: number;
+      plan_nombre: string;
+      plan_modalidad: string;
+      fecha_inicio: string;
+      fecha_fin: string;
+      estado: string;
+      dias_restantes: number;
+      monto_pagado: number;
+    }>;
+  } | null>(null);
+
+  const verFicha = async (cedula: string) => {
+    try {
+      const res = await api.get<ApiResponse<typeof ficha>>(`/clientes/${cedula}/ficha`);
+      setFicha(res.data);
+    } catch {
+      /* */
+    }
+  };
+
+  const cerrarFicha = () => setFicha(null);
+
   const cargarClientes = async () => {
     try {
       const res = await api.get<ApiResponse<Cliente[]>>('/clientes');
@@ -462,6 +488,12 @@ export default function Clientes() {
                     >
                       Editar
                     </button>
+                    <button
+                      onClick={() => verFicha(c.cedula)}
+                      className="text-xs text-green-600 hover:underline ml-2"
+                    >
+                      Ficha
+                    </button>
                   </td>
                 </tr>
               ))
@@ -469,6 +501,144 @@ export default function Clientes() {
           </tbody>
         </table>
       </div>
+
+      {/* Ficha del cliente (modal) */}
+      {ficha && (
+        <div className="fixed inset-0 bg-black/30 flex items-start justify-center pt-10 z-50">
+          <div className="bg-white rounded shadow-lg w-full max-w-2xl max-h-[80vh] overflow-auto p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold">
+                Ficha: {ficha.cliente.nombre} {ficha.cliente.apellidos}
+              </h3>
+              <button onClick={cerrarFicha} className="text-gray-400 hover:text-gray-800 text-lg">
+                ✕
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-sm mb-4">
+              <div>
+                <span className="text-gray-500">Cédula:</span> {ficha.cliente.cedula}
+              </div>
+              <div>
+                <span className="text-gray-500">Teléfono:</span> {ficha.cliente.telefono || '-'}
+              </div>
+              <div>
+                <span className="text-gray-500">Edad:</span> {ficha.cliente.edad ?? '-'}
+              </div>
+              <div>
+                <span className="text-gray-500">Ciudad:</span> {ficha.cliente.ciudad_nombre || '-'}
+              </div>
+              <div>
+                <span className="text-gray-500">Sexo:</span> {ficha.cliente.sexo_nombre || '-'}
+              </div>
+              <div>
+                <span className="text-gray-500">Canal:</span>{' '}
+                {ficha.cliente.canal_captacion_nombre || '-'}
+              </div>
+            </div>
+            {ficha.cliente.notas_salud && (
+              <p className="text-xs bg-orange-50 border border-orange-200 rounded p-2 mb-4 text-orange-800">
+                Salud: {ficha.cliente.notas_salud}
+              </p>
+            )}
+
+            {/* Suscripciones */}
+            <h4 className="text-sm font-medium mb-2">
+              Suscripciones ({ficha.suscripciones.length})
+            </h4>
+            {ficha.suscripciones.length === 0 ? (
+              <p className="text-xs text-gray-400 mb-4">Sin suscripciones</p>
+            ) : (
+              <table className="w-full text-xs mb-4">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-2 py-1 text-left">Plan</th>
+                    <th className="px-2 py-1">Inicio</th>
+                    <th className="px-2 py-1">Fin</th>
+                    <th className="px-2 py-1">Estado</th>
+                    <th className="px-2 py-1">Días rest.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ficha.suscripciones.map((s) => (
+                    <tr key={s.id} className="border-t">
+                      <td className="px-2 py-1">
+                        {s.plan_nombre} ({s.plan_modalidad})
+                      </td>
+                      <td className="px-2 py-1">{s.fecha_inicio}</td>
+                      <td className="px-2 py-1">{s.fecha_fin}</td>
+                      <td className="px-2 py-1">
+                        <span
+                          className={
+                            s.estado === 'activa'
+                              ? 'text-green-600'
+                              : s.estado === 'vencida'
+                                ? 'text-red-600'
+                                : 'text-gray-500'
+                          }
+                        >
+                          {s.estado}
+                        </span>
+                      </td>
+                      <td
+                        className={`px-2 py-1 font-medium ${s.dias_restantes <= 7 ? 'text-red-600' : ''}`}
+                      >
+                        {s.dias_restantes}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            {/* Ventas */}
+            <h4 className="text-sm font-medium mb-2">Ventas ({ficha.ventas.length})</h4>
+            {ficha.ventas.length === 0 ? (
+              <p className="text-xs text-gray-400">Sin ventas</p>
+            ) : (
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-2 py-1 text-left">#</th>
+                    <th className="px-2 py-1">Fecha</th>
+                    <th className="px-2 py-1">Tipo</th>
+                    <th className="px-2 py-1 text-right">Total</th>
+                    <th className="px-2 py-1">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ficha.ventas.map((v) => (
+                    <tr key={v.id} className="border-t">
+                      <td className="px-2 py-1">{v.id}</td>
+                      <td className="px-2 py-1">{v.fecha.split(' ')[0]}</td>
+                      <td className="px-2 py-1">{v.tipo}</td>
+                      <td className="px-2 py-1 text-right font-medium">
+                        {new Intl.NumberFormat('es-CO', {
+                          style: 'currency',
+                          currency: 'COP',
+                          minimumFractionDigits: 0,
+                        }).format(v.total / 100)}
+                      </td>
+                      <td className="px-2 py-1">
+                        <span
+                          className={
+                            v.estado === 'pagada'
+                              ? 'text-green-600'
+                              : v.estado === 'pendiente'
+                                ? 'text-yellow-600'
+                                : 'text-red-600'
+                          }
+                        >
+                          {v.estado}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
