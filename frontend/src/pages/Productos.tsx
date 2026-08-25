@@ -70,6 +70,40 @@ export default function Productos() {
   const [proveedores, setProveedores] = useState<Tercero[]>([]);
   const [form, setForm] = useState(FORM_VACIO);
 
+  // Filtros y ordenamiento
+  const [filtroCategoria, setFiltroCategoria] = useState('');
+  const [filtroStock, setFiltroStock] = useState('');
+  const [ordenarPor, setOrdenarPor] = useState<string>('nombre');
+  const [ordenDir, setOrdenDir] = useState<'asc' | 'desc'>('asc');
+
+  const toggleOrden = (campo: string) => {
+    if (ordenarPor === campo) setOrdenDir(ordenDir === 'asc' ? 'desc' : 'asc');
+    else {
+      setOrdenarPor(campo);
+      setOrdenDir('asc');
+    }
+  };
+
+  const productosFiltrados = productos
+    .filter((p) => !filtroCategoria || p.categoria_nombre === filtroCategoria)
+    .filter(
+      (p) =>
+        !filtroStock ||
+        (filtroStock === 'bajo' && p.stock_actual <= p.stock_minimo) ||
+        (filtroStock === 'ok' && p.stock_actual > p.stock_minimo),
+    )
+    .sort((a, b) => {
+      let cmp = 0;
+      if (ordenarPor === 'nombre') cmp = a.nombre.localeCompare(b.nombre);
+      else if (ordenarPor === 'categoria')
+        cmp = a.categoria_nombre.localeCompare(b.categoria_nombre);
+      else if (ordenarPor === 'unidad')
+        cmp = a.unidad_medida_nombre.localeCompare(b.unidad_medida_nombre);
+      else if (ordenarPor === 'stock') cmp = a.stock_actual - b.stock_actual;
+      else if (ordenarPor === 'precio') cmp = a.precio_venta - b.precio_venta;
+      return ordenDir === 'desc' ? -cmp : cmp;
+    });
+
   const cargarProductos = async () => {
     try {
       const res = await api.get<ApiResponse<Producto[]>>('/productos');
@@ -345,32 +379,96 @@ export default function Productos() {
         </form>
       )}
 
+      {/* Filtros */}
+      <div className="flex gap-3 mb-3 items-center">
+        <select
+          value={filtroCategoria}
+          onChange={(e) => setFiltroCategoria(e.target.value)}
+          className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+        >
+          <option value="">Todas las categorías</option>
+          {categorias.map((c) => (
+            <option key={c.id} value={c.nombre}>
+              {c.nombre}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filtroStock}
+          onChange={(e) => setFiltroStock(e.target.value)}
+          className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+        >
+          <option value="">Todo el stock</option>
+          <option value="bajo">Stock bajo</option>
+          <option value="ok">Stock OK</option>
+        </select>
+        {(filtroCategoria || filtroStock) && (
+          <button
+            onClick={() => {
+              setFiltroCategoria('');
+              setFiltroStock('');
+            }}
+            className="text-xs text-gray-500 hover:text-gray-800"
+          >
+            Limpiar
+          </button>
+        )}
+        <span className="ml-auto text-xs text-gray-400">
+          {productosFiltrados.length} resultado(s)
+        </span>
+      </div>
+
       {/* Tabla */}
       <div className="bg-white rounded shadow overflow-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-100 text-left">
             <tr>
               <th className="px-3 py-2">SKU</th>
-              <th className="px-3 py-2">Nombre</th>
-              <th className="px-3 py-2">Categoría</th>
-              <th className="px-3 py-2">Unidad</th>
-              <th className="px-3 py-2 text-right">P. Venta</th>
+              <th
+                className="px-3 py-2 cursor-pointer hover:text-gray-900"
+                onClick={() => toggleOrden('nombre')}
+              >
+                Nombre {ordenarPor === 'nombre' && (ordenDir === 'asc' ? '↑' : '↓')}
+              </th>
+              <th
+                className="px-3 py-2 cursor-pointer hover:text-gray-900"
+                onClick={() => toggleOrden('categoria')}
+              >
+                Categoría {ordenarPor === 'categoria' && (ordenDir === 'asc' ? '↑' : '↓')}
+              </th>
+              <th
+                className="px-3 py-2 cursor-pointer hover:text-gray-900"
+                onClick={() => toggleOrden('unidad')}
+              >
+                Unidad {ordenarPor === 'unidad' && (ordenDir === 'asc' ? '↑' : '↓')}
+              </th>
+              <th
+                className="px-3 py-2 text-right cursor-pointer hover:text-gray-900"
+                onClick={() => toggleOrden('precio')}
+              >
+                P. Venta {ordenarPor === 'precio' && (ordenDir === 'asc' ? '↑' : '↓')}
+              </th>
               <th className="px-3 py-2 text-right">P. Costo</th>
-              <th className="px-3 py-2 text-center">Stock</th>
+              <th
+                className="px-3 py-2 text-center cursor-pointer hover:text-gray-900"
+                onClick={() => toggleOrden('stock')}
+              >
+                Stock {ordenarPor === 'stock' && (ordenDir === 'asc' ? '↑' : '↓')}
+              </th>
               <th className="px-3 py-2">Proveedor</th>
               <th className="px-3 py-2">IVA</th>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
-            {productos.length === 0 ? (
+            {productosFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={10} className="px-3 py-4 text-center text-gray-400">
                   No hay productos registrados
                 </td>
               </tr>
             ) : (
-              productos.map((p) => (
+              productosFiltrados.map((p) => (
                 <tr key={p.sku} className="border-t border-gray-100 hover:bg-gray-50">
                   <td className="px-3 py-2 font-mono text-xs">{p.sku}</td>
                   <td className="px-3 py-2">{p.nombre}</td>
