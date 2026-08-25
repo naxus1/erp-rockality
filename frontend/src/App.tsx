@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard';
 import Clientes from './pages/Clientes';
 import Productos from './pages/Productos';
 import Ventas from './pages/Ventas';
+import Terceros from './pages/Terceros';
+import Compras from './pages/Compras';
 import Placeholder from './pages/Placeholder';
 
 export default function App() {
@@ -31,8 +33,8 @@ export default function App() {
             <Route path="/planes" element={<Placeholder />} />
             <Route path="/gastos" element={<Placeholder />} />
             <Route path="/gastos/nuevo" element={<Placeholder />} />
-            <Route path="/compras" element={<Placeholder />} />
-            <Route path="/terceros" element={<Placeholder />} />
+            <Route path="/compras" element={<Compras />} />
+            <Route path="/terceros" element={<Terceros />} />
             <Route path="/reportes" element={<Placeholder />} />
             <Route path="/catalogos" element={<Placeholder />} />
           </Route>
