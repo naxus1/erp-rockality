@@ -234,7 +234,7 @@ export default function Compras() {
                       {c.estado !== 'anulada' && (
                         <button
                           onClick={() => anularCompra(c.id)}
-                          className="text-red-600 hover:text-red-800"
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
                           title="Anular compra"
                         >
                           <svg

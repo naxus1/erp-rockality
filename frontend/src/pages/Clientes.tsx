@@ -606,7 +606,7 @@ export default function Clientes() {
                   <td className="px-3 py-2">
                     <button
                       onClick={() => abrirEditar(c)}
-                      className="text-blue-600 hover:text-blue-800"
+                      className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded-lg transition-colors"
                       title="Editar"
                     >
                       <svg
@@ -626,7 +626,7 @@ export default function Clientes() {
                     </button>
                     <button
                       onClick={() => verFicha(c.cedula)}
-                      className="text-green-600 hover:text-green-800 ml-2"
+                      className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1.5 rounded-lg transition-colors ml-1"
                       title="Ver ficha"
                     >
                       <svg

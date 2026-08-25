@@ -299,7 +299,7 @@ export default function Terceros() {
                   <td className="px-3 py-2">
                     <button
                       onClick={() => abrirEditar(t)}
-                      className="text-blue-600 hover:text-blue-800"
+                      className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded-lg transition-colors"
                       title="Editar"
                     >
                       <svg
