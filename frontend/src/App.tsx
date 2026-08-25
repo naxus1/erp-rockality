@@ -10,6 +10,7 @@ import Ventas from './pages/Ventas';
 import Terceros from './pages/Terceros';
 import Compras from './pages/Compras';
 import Planes from './pages/Planes';
+import Gastos from './pages/Gastos';
 import Placeholder from './pages/Placeholder';
 
 export default function App() {
@@ -32,8 +33,8 @@ export default function App() {
             <Route path="/ventas" element={<Ventas />} />
             <Route path="/pagos" element={<Placeholder />} />
             <Route path="/planes" element={<Planes />} />
-            <Route path="/gastos" element={<Placeholder />} />
-            <Route path="/gastos/nuevo" element={<Placeholder />} />
+            <Route path="/gastos" element={<Gastos />} />
+            <Route path="/gastos/nuevo" element={<Gastos />} />
             <Route path="/compras" element={<Compras />} />
             <Route path="/terceros" element={<Terceros />} />
             <Route path="/reportes" element={<Placeholder />} />
