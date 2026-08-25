@@ -21,6 +21,8 @@ export interface Cliente {
   consentimiento_fecha: string | null;
   notas: string | null;
   notas_salud: string | null;
+  instagram: string | null;
+  linkedin: string | null;
   activo: number;
   created_at: string;
   created_by: string | null;
@@ -49,6 +51,8 @@ export interface CreateClienteData {
   consentimiento_datos?: number;
   notas?: string;
   notas_salud?: string;
+  instagram?: string;
+  linkedin?: string;
   created_by?: string;
 }
 
@@ -65,6 +69,8 @@ export interface UpdateClienteData {
   consentimiento_datos?: number;
   notas?: string;
   notas_salud?: string;
+  instagram?: string;
+  linkedin?: string;
   updated_by?: string;
 }
 
@@ -119,8 +125,8 @@ export function create(data: CreateClienteData): ClienteConRelaciones {
   const consentimientoFecha = consentimiento ? new Date().toISOString() : null;
 
   db.prepare(
-    `INSERT INTO clientes (cedula, nombre, apellidos, telefono, email, fecha_nacimiento, direccion, ciudad_id, sexo_id, canal_captacion_id, consentimiento_datos, consentimiento_fecha, notas, notas_salud, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO clientes (cedula, nombre, apellidos, telefono, email, fecha_nacimiento, direccion, ciudad_id, sexo_id, canal_captacion_id, consentimiento_datos, consentimiento_fecha, notas, notas_salud, instagram, linkedin, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     data.cedula,
     data.nombre,
@@ -136,6 +142,8 @@ export function create(data: CreateClienteData): ClienteConRelaciones {
     consentimientoFecha,
     data.notas || null,
     data.notas_salud || null,
+    data.instagram || null,
+    data.linkedin || null,
     data.created_by || null,
   );
 
@@ -160,7 +168,7 @@ export function update(cedula: string, data: UpdateClienteData): ClienteConRelac
        nombre = ?, apellidos = ?, telefono = ?, email = ?,
        fecha_nacimiento = ?, direccion = ?, ciudad_id = ?, sexo_id = ?,
        canal_captacion_id = ?, consentimiento_datos = ?, consentimiento_fecha = ?,
-       notas = ?, notas_salud = ?, updated_at = datetime('now'), updated_by = ?
+       notas = ?, notas_salud = ?, instagram = ?, linkedin = ?, updated_at = datetime('now'), updated_by = ?
      WHERE cedula = ?`,
   ).run(
     data.nombre ?? current.nombre,
@@ -176,6 +184,8 @@ export function update(cedula: string, data: UpdateClienteData): ClienteConRelac
     consentimientoFecha,
     data.notas ?? current.notas,
     data.notas_salud ?? current.notas_salud,
+    data.instagram ?? current.instagram,
+    data.linkedin ?? current.linkedin,
     data.updated_by || null,
     cedula,
   );

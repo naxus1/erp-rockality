@@ -22,6 +22,8 @@ export const createClienteSchema = z.object({
   consentimiento_datos: z.number().int().min(0).max(1).optional(),
   notas: z.string().max(1000).optional(),
   notas_salud: z.string().max(1000).optional(),
+  instagram: z.string().max(100).optional(),
+  linkedin: z.string().max(200).optional(),
 });
 
 export const updateClienteSchema = z.object({
@@ -45,4 +47,6 @@ export const updateClienteSchema = z.object({
   consentimiento_datos: z.number().int().min(0).max(1).optional(),
   notas: z.string().max(1000).optional(),
   notas_salud: z.string().max(1000).optional(),
+  instagram: z.string().max(100).optional(),
+  linkedin: z.string().max(200).optional(),
 });

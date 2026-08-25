@@ -18,6 +18,8 @@ interface Cliente {
   edad: number | null;
   notas: string | null;
   notas_salud: string | null;
+  instagram: string | null;
+  linkedin: string | null;
   consentimiento_datos: number;
   activo: number;
 }
@@ -46,6 +48,8 @@ const FORM_VACIO = {
   canal_captacion_id: '',
   notas: '',
   notas_salud: '',
+  instagram: '',
+  linkedin: '',
   consentimiento_datos: 0,
 };
 
@@ -155,6 +159,8 @@ export default function Clientes() {
       canal_captacion_id: c.canal_captacion_id ? String(c.canal_captacion_id) : '',
       notas: c.notas || '',
       notas_salud: c.notas_salud || '',
+      instagram: c.instagram || '',
+      linkedin: c.linkedin || '',
       consentimiento_datos: c.consentimiento_datos,
     });
     setEditando(c.cedula);
@@ -195,6 +201,8 @@ export default function Clientes() {
       canal_captacion_id: form.canal_captacion_id ? Number(form.canal_captacion_id) : undefined,
       notas: form.notas || undefined,
       notas_salud: form.notas_salud || undefined,
+      instagram: form.instagram || undefined,
+      linkedin: form.linkedin || undefined,
       consentimiento_datos: form.consentimiento_datos,
     };
 
@@ -410,6 +418,26 @@ export default function Clientes() {
               value={form.notas_salud}
               onChange={(e) => setForm({ ...form, notas_salud: e.target.value })}
               placeholder="Lesiones, restricciones..."
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Instagram</label>
+            <input
+              type="text"
+              value={form.instagram}
+              onChange={(e) => setForm({ ...form, instagram: e.target.value })}
+              placeholder="@usuario"
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">LinkedIn</label>
+            <input
+              type="text"
+              value={form.linkedin}
+              onChange={(e) => setForm({ ...form, linkedin: e.target.value })}
+              placeholder="URL perfil"
               className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
             />
           </div>
