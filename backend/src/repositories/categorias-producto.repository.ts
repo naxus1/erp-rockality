@@ -9,6 +9,7 @@ import { getDatabase } from '../db/connection.js';
 export interface CategoriaProducto {
   id: number;
   nombre: string;
+  prefijo_sku: string;
   descripcion: string | null;
 }
 
@@ -26,11 +27,17 @@ export function findById(id: number): CategoriaProducto | undefined {
     | undefined;
 }
 
-export function create(data: { nombre: string; descripcion?: string }): CategoriaProducto {
+export function create(data: {
+  nombre: string;
+  prefijo_sku?: string;
+  descripcion?: string;
+}): CategoriaProducto {
   const db = getDatabase();
+  // Auto-generar prefijo si no se proporciona (primeras 4 letras del nombre en mayúscula)
+  const prefijo = data.prefijo_sku || data.nombre.substring(0, 4).toUpperCase().replace(/\s/g, '');
   const result = db
-    .prepare('INSERT INTO categorias_producto (nombre, descripcion) VALUES (?, ?)')
-    .run(data.nombre, data.descripcion || null);
+    .prepare('INSERT INTO categorias_producto (nombre, prefijo_sku, descripcion) VALUES (?, ?, ?)')
+    .run(data.nombre, prefijo, data.descripcion || null);
 
   return findById(Number(result.lastInsertRowid))!;
 }
