@@ -81,6 +81,37 @@ export default function Clientes() {
     }>;
   } | null>(null);
 
+  // Filtros y ordenamiento
+  const [filtroCiudad, setFiltroCiudad] = useState('');
+  const [filtroSexo, setFiltroSexo] = useState('');
+  const [ordenarPor, setOrdenarPor] = useState<string>('nombre');
+  const [ordenDir, setOrdenDir] = useState<'asc' | 'desc'>('asc');
+
+  const toggleOrden = (campo: string) => {
+    if (ordenarPor === campo) setOrdenDir(ordenDir === 'asc' ? 'desc' : 'asc');
+    else {
+      setOrdenarPor(campo);
+      setOrdenDir('asc');
+    }
+  };
+
+  const clientesFiltrados = clientes
+    .filter((c) => !filtroCiudad || c.ciudad_nombre === filtroCiudad)
+    .filter((c) => !filtroSexo || c.sexo_nombre === filtroSexo)
+    .sort((a, b) => {
+      let cmp = 0;
+      if (ordenarPor === 'nombre')
+        cmp = `${a.nombre} ${a.apellidos}`.localeCompare(`${b.nombre} ${b.apellidos}`);
+      else if (ordenarPor === 'ciudad')
+        cmp = (a.ciudad_nombre || '').localeCompare(b.ciudad_nombre || '');
+      else if (ordenarPor === 'sexo')
+        cmp = (a.sexo_nombre || '').localeCompare(b.sexo_nombre || '');
+      else if (ordenarPor === 'edad') cmp = (a.edad || 0) - (b.edad || 0);
+      else if (ordenarPor === 'salud')
+        cmp = (a.notas_salud || '').localeCompare(b.notas_salud || '');
+      return ordenDir === 'desc' ? -cmp : cmp;
+    });
+
   const verFicha = async (cedula: string) => {
     try {
       const res = await api.get<ApiResponse<typeof ficha>>(`/clientes/${cedula}/ficha`);
@@ -462,15 +493,53 @@ export default function Clientes() {
         </form>
       )}
 
-      {/* Búsqueda */}
-      <div className="mb-3">
+      {/* Búsqueda y filtros */}
+      <div className="flex gap-3 mb-3 items-center">
         <input
           type="text"
           placeholder="Buscar por nombre, apellido, cédula o teléfono..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="w-full max-w-md border border-gray-300 rounded px-3 py-1.5 text-sm"
+          className="flex-1 max-w-md border border-gray-300 rounded px-3 py-1.5 text-sm"
         />
+        <select
+          value={filtroCiudad}
+          onChange={(e) => setFiltroCiudad(e.target.value)}
+          className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+        >
+          <option value="">Todas las ciudades</option>
+          {ciudades.map((c) => (
+            <option key={c.id} value={c.nombre}>
+              {c.nombre}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filtroSexo}
+          onChange={(e) => setFiltroSexo(e.target.value)}
+          className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+        >
+          <option value="">Todos</option>
+          {sexos.map((s) => (
+            <option key={s.id} value={s.nombre}>
+              {s.nombre}
+            </option>
+          ))}
+        </select>
+        {(filtroCiudad || filtroSexo) && (
+          <button
+            onClick={() => {
+              setFiltroCiudad('');
+              setFiltroSexo('');
+            }}
+            className="text-xs text-gray-500 hover:text-gray-800"
+          >
+            Limpiar
+          </button>
+        )}
+        <span className="ml-auto text-xs text-gray-400">
+          {clientesFiltrados.length} resultado(s)
+        </span>
       </div>
 
       {/* Tabla */}
@@ -479,25 +548,50 @@ export default function Clientes() {
           <thead className="bg-gray-100 text-left">
             <tr>
               <th className="px-3 py-2">Cédula</th>
-              <th className="px-3 py-2">Nombre</th>
+              <th
+                className="px-3 py-2 cursor-pointer hover:text-gray-900"
+                onClick={() => toggleOrden('nombre')}
+              >
+                Nombre {ordenarPor === 'nombre' && (ordenDir === 'asc' ? '↑' : '↓')}
+              </th>
               <th className="px-3 py-2">Teléfono</th>
-              <th className="px-3 py-2">Ciudad</th>
-              <th className="px-3 py-2">Sexo</th>
-              <th className="px-3 py-2">Edad</th>
+              <th
+                className="px-3 py-2 cursor-pointer hover:text-gray-900"
+                onClick={() => toggleOrden('ciudad')}
+              >
+                Ciudad {ordenarPor === 'ciudad' && (ordenDir === 'asc' ? '↑' : '↓')}
+              </th>
+              <th
+                className="px-3 py-2 cursor-pointer hover:text-gray-900"
+                onClick={() => toggleOrden('sexo')}
+              >
+                Sexo {ordenarPor === 'sexo' && (ordenDir === 'asc' ? '↑' : '↓')}
+              </th>
+              <th
+                className="px-3 py-2 cursor-pointer hover:text-gray-900"
+                onClick={() => toggleOrden('edad')}
+              >
+                Edad {ordenarPor === 'edad' && (ordenDir === 'asc' ? '↑' : '↓')}
+              </th>
               <th className="px-3 py-2">Canal</th>
-              <th className="px-3 py-2">Salud</th>
+              <th
+                className="px-3 py-2 cursor-pointer hover:text-gray-900"
+                onClick={() => toggleOrden('salud')}
+              >
+                Salud {ordenarPor === 'salud' && (ordenDir === 'asc' ? '↑' : '↓')}
+              </th>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
-            {clientes.length === 0 ? (
+            {clientesFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-3 py-4 text-center text-gray-400">
                   No hay clientes registrados
                 </td>
               </tr>
             ) : (
-              clientes.map((c) => (
+              clientesFiltrados.map((c) => (
                 <tr key={c.cedula} className="border-t border-gray-100 hover:bg-gray-50">
                   <td className="px-3 py-2 font-mono text-xs">{c.cedula}</td>
                   <td className="px-3 py-2">
