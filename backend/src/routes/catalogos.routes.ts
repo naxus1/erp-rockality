@@ -138,4 +138,29 @@ router.delete('/:catalogo/:id', (req: Request, res: Response) => {
   res.json({ success: true, message: `"${existing.nombre}" marcado como inactivo` });
 });
 
+// PATCH /api/catalogos/:catalogo/:id/activar — Reactivar un item inactivo
+router.patch('/:catalogo/:id/activar', (req: Request, res: Response) => {
+  const config = CATALOGOS[req.params.catalogo];
+  if (!config) {
+    res.status(404).json({ success: false, error: 'Catálogo no encontrado' });
+    return;
+  }
+
+  const db = getDatabase();
+  const existing = db
+    .prepare(`SELECT * FROM ${config.tabla} WHERE id = ?`)
+    .get(Number(req.params.id)) as { id: number; nombre: string } | undefined;
+  if (!existing) {
+    res.status(404).json({ success: false, error: 'Item no encontrado' });
+    return;
+  }
+
+  const nombreLimpio = existing.nombre.replace(' (inactivo)', '');
+  db.prepare(`UPDATE ${config.tabla} SET nombre = ? WHERE id = ?`).run(
+    nombreLimpio,
+    Number(req.params.id),
+  );
+  res.json({ success: true, data: { id: existing.id, nombre: nombreLimpio } });
+});
+
 export default router;
