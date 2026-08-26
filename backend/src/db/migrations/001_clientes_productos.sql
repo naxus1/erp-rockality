@@ -145,6 +145,8 @@ CREATE TABLE productos (
   categoria_id INTEGER NOT NULL,
   unidad_medida_id INTEGER NOT NULL,
   proveedor_nit TEXT,                              -- FK a tercero (tipo Proveedor)
+  variante TEXT,                                   -- sabor/presentación: Vainilla, Chocolate, NA
+  notas TEXT,                                      -- observaciones del producto
   precio_venta INTEGER NOT NULL,                   -- centavos COP
   precio_costo INTEGER NOT NULL,                   -- centavos COP
   stock_actual INTEGER NOT NULL DEFAULT 0,         -- disminuye con ventas
