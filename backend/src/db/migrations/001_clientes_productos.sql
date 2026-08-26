@@ -137,6 +137,22 @@ CREATE TABLE terceros (
   FOREIGN KEY (tipo_tercero_id) REFERENCES tipos_tercero(id)
 );
 
+-- ── Variantes / Presentaciones ─────────────────────────────
+
+CREATE TABLE variantes_producto (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nombre TEXT NOT NULL UNIQUE
+);
+
+INSERT INTO variantes_producto (nombre) VALUES
+  ('Vainilla'),
+  ('Chocolate'),
+  ('Cookies & Cream'),
+  ('Chocolate Peanut Butter'),
+  ('Fresa'),
+  ('Sin sabor'),
+  ('NA');
+
 -- ── Productos ─────────────────────────────────────────────
 
 CREATE TABLE productos (
@@ -145,7 +161,7 @@ CREATE TABLE productos (
   categoria_id INTEGER NOT NULL,
   unidad_medida_id INTEGER NOT NULL,
   proveedor_nit TEXT,                              -- FK a tercero (tipo Proveedor)
-  variante TEXT,                                   -- sabor/presentación: Vainilla, Chocolate, NA
+  variante_id INTEGER,                             -- FK a variantes_producto
   notas TEXT,                                      -- observaciones del producto
   precio_venta INTEGER NOT NULL,                   -- centavos COP
   precio_costo INTEGER NOT NULL,                   -- centavos COP
@@ -160,7 +176,8 @@ CREATE TABLE productos (
   updated_by TEXT,
   FOREIGN KEY (categoria_id) REFERENCES categorias_producto(id),
   FOREIGN KEY (unidad_medida_id) REFERENCES unidades_medida(id),
-  FOREIGN KEY (proveedor_nit) REFERENCES terceros(nit)
+  FOREIGN KEY (proveedor_nit) REFERENCES terceros(nit),
+  FOREIGN KEY (variante_id) REFERENCES variantes_producto(id)
 );
 
 -- ── Índices ───────────────────────────────────────────────

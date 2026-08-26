@@ -22,6 +22,7 @@ const CATALOGOS = [
   { key: 'categorias-gasto', label: 'Categorías de gasto' },
   { key: 'tipos-tercero', label: 'Tipos de tercero' },
   { key: 'sexos', label: 'Sexos' },
+  { key: 'variantes-producto', label: 'Variantes / Presentaciones' },
 ];
 
 export default function Catalogos() {

@@ -12,7 +12,7 @@ export interface Producto {
   categoria_id: number;
   unidad_medida_id: number;
   proveedor_nit: string | null;
-  variante: string | null;
+  variante_id: number | null;
   notas: string | null;
   precio_venta: number;
   precio_costo: number;
@@ -32,6 +32,7 @@ export interface ProductoConRelaciones extends Producto {
   unidad_medida_nombre: string;
   unidad_medida_abreviatura: string;
   proveedor_nombre: string | null;
+  variante_nombre: string | null;
 }
 
 export interface CreateProductoData {
@@ -40,7 +41,7 @@ export interface CreateProductoData {
   categoria_id: number;
   unidad_medida_id: number;
   proveedor_nit?: string;
-  variante?: string;
+  variante_id?: number;
   notas?: string;
   precio_venta: number;
   precio_costo: number;
@@ -56,7 +57,7 @@ export interface UpdateProductoData {
   categoria_id?: number;
   unidad_medida_id?: number;
   proveedor_nit?: string;
-  variante?: string;
+  variante_id?: number;
   notas?: string;
   precio_venta?: number;
   precio_costo?: number;
@@ -73,11 +74,13 @@ const SELECT_PRODUCTO = `
     cp.nombre as categoria_nombre,
     um.nombre as unidad_medida_nombre,
     um.abreviatura as unidad_medida_abreviatura,
-    prov.nombre as proveedor_nombre
+    prov.nombre as proveedor_nombre,
+    vp.nombre as variante_nombre
   FROM productos p
   JOIN categorias_producto cp ON p.categoria_id = cp.id
   JOIN unidades_medida um ON p.unidad_medida_id = um.id
   LEFT JOIN terceros prov ON p.proveedor_nit = prov.nit
+  LEFT JOIN variantes_producto vp ON p.variante_id = vp.id
 `;
 
 export function findAll(includeInactive = false): ProductoConRelaciones[] {
@@ -135,7 +138,7 @@ export function create(data: CreateProductoData): ProductoConRelaciones {
   const sku = data.sku || generarSku(data.categoria_id);
 
   db.prepare(
-    `INSERT INTO productos (sku, nombre, categoria_id, unidad_medida_id, proveedor_nit, variante, notas, precio_venta, precio_costo, stock_actual, stock_minimo, aplica_iva, porcentaje_iva, created_by)
+    `INSERT INTO productos (sku, nombre, categoria_id, unidad_medida_id, proveedor_nit, variante_id, notas, precio_venta, precio_costo, stock_actual, stock_minimo, aplica_iva, porcentaje_iva, created_by)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     sku,
@@ -143,7 +146,7 @@ export function create(data: CreateProductoData): ProductoConRelaciones {
     data.categoria_id,
     data.unidad_medida_id,
     data.proveedor_nit || null,
-    data.variante || null,
+    data.variante_id || null,
     data.notas || null,
     data.precio_venta,
     data.precio_costo,
@@ -165,7 +168,7 @@ export function update(sku: string, data: UpdateProductoData): ProductoConRelaci
   db.prepare(
     `UPDATE productos SET
        nombre = ?, categoria_id = ?, unidad_medida_id = ?, proveedor_nit = ?,
-       variante = ?, notas = ?,
+       variante_id = ?, notas = ?,
        precio_venta = ?, precio_costo = ?,
        stock_actual = ?, stock_minimo = ?,
        aplica_iva = ?, porcentaje_iva = ?, activo = ?,
@@ -176,7 +179,7 @@ export function update(sku: string, data: UpdateProductoData): ProductoConRelaci
     data.categoria_id ?? current.categoria_id,
     data.unidad_medida_id ?? current.unidad_medida_id,
     data.proveedor_nit ?? current.proveedor_nit,
-    data.variante ?? current.variante,
+    data.variante_id ?? current.variante_id,
     data.notas ?? current.notas,
     data.precio_venta ?? current.precio_venta,
     data.precio_costo ?? current.precio_costo,

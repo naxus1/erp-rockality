@@ -20,6 +20,7 @@ const CATALOGOS: Record<string, { tabla: string; hasActivo?: boolean }> = {
   gerencias: { tabla: 'gerencias' },
   'tipos-gasto': { tabla: 'tipos_gasto' },
   'categorias-gasto': { tabla: 'categorias_gasto' },
+  'variantes-producto': { tabla: 'variantes_producto' },
 };
 
 // GET /api/catalogos/:catalogo — Listar
