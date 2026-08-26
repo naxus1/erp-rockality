@@ -225,16 +225,44 @@ export default function Catalogos() {
                                 setEditandoId(item.id);
                                 setEditandoNombre(item.nombre);
                               }}
-                              className="text-xs text-blue-600 hover:underline mr-2"
+                              className="text-blue-600 hover:text-blue-800 mr-2"
+                              title="Editar"
                             >
-                              Editar
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                              </svg>
                             </button>
                             {!selected.useOwnEndpoint && (
                               <button
                                 onClick={() => desactivar(item.id, item.nombre)}
-                                className="text-xs text-red-500 hover:underline"
+                                className="text-red-500 hover:text-red-700"
+                                title="Desactivar"
                               >
-                                Desactivar
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                                  />
+                                </svg>
                               </button>
                             )}
                           </>
@@ -242,9 +270,23 @@ export default function Catalogos() {
                         {item.nombre.includes('(inactivo)') && !selected.useOwnEndpoint && (
                           <button
                             onClick={() => reactivar(item.id, item.nombre)}
-                            className="text-xs text-green-600 hover:underline"
+                            className="text-green-600 hover:text-green-800"
+                            title="Activar"
                           >
-                            Activar
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
                           </button>
                         )}
                       </td>
