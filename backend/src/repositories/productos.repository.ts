@@ -12,6 +12,8 @@ export interface Producto {
   categoria_id: number;
   unidad_medida_id: number;
   proveedor_nit: string | null;
+  variante: string | null;
+  notas: string | null;
   precio_venta: number;
   precio_costo: number;
   stock_actual: number;
@@ -38,6 +40,8 @@ export interface CreateProductoData {
   categoria_id: number;
   unidad_medida_id: number;
   proveedor_nit?: string;
+  variante?: string;
+  notas?: string;
   precio_venta: number;
   precio_costo: number;
   stock_actual?: number;
@@ -52,6 +56,8 @@ export interface UpdateProductoData {
   categoria_id?: number;
   unidad_medida_id?: number;
   proveedor_nit?: string;
+  variante?: string;
+  notas?: string;
   precio_venta?: number;
   precio_costo?: number;
   stock_actual?: number;
@@ -129,14 +135,16 @@ export function create(data: CreateProductoData): ProductoConRelaciones {
   const sku = data.sku || generarSku(data.categoria_id);
 
   db.prepare(
-    `INSERT INTO productos (sku, nombre, categoria_id, unidad_medida_id, proveedor_nit, precio_venta, precio_costo, stock_actual, stock_minimo, aplica_iva, porcentaje_iva, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO productos (sku, nombre, categoria_id, unidad_medida_id, proveedor_nit, variante, notas, precio_venta, precio_costo, stock_actual, stock_minimo, aplica_iva, porcentaje_iva, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     sku,
     data.nombre,
     data.categoria_id,
     data.unidad_medida_id,
     data.proveedor_nit || null,
+    data.variante || null,
+    data.notas || null,
     data.precio_venta,
     data.precio_costo,
     data.stock_actual ?? 0,
@@ -157,6 +165,7 @@ export function update(sku: string, data: UpdateProductoData): ProductoConRelaci
   db.prepare(
     `UPDATE productos SET
        nombre = ?, categoria_id = ?, unidad_medida_id = ?, proveedor_nit = ?,
+       variante = ?, notas = ?,
        precio_venta = ?, precio_costo = ?,
        stock_actual = ?, stock_minimo = ?,
        aplica_iva = ?, porcentaje_iva = ?, activo = ?,
@@ -167,6 +176,8 @@ export function update(sku: string, data: UpdateProductoData): ProductoConRelaci
     data.categoria_id ?? current.categoria_id,
     data.unidad_medida_id ?? current.unidad_medida_id,
     data.proveedor_nit ?? current.proveedor_nit,
+    data.variante ?? current.variante,
+    data.notas ?? current.notas,
     data.precio_venta ?? current.precio_venta,
     data.precio_costo ?? current.precio_costo,
     data.stock_actual ?? current.stock_actual,
