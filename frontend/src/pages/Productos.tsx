@@ -11,7 +11,8 @@ interface Producto {
   unidad_medida_abreviatura: string;
   proveedor_nit: string | null;
   proveedor_nombre: string | null;
-  variante: string | null;
+  variante_id: number | null;
+  variante_nombre: string | null;
   notas: string | null;
   precio_venta: number;
   precio_costo: number;
@@ -52,7 +53,7 @@ const FORM_VACIO = {
   categoria_id: '',
   unidad_medida_id: '',
   proveedor_nit: '',
-  variante: '',
+  variante_id: '',
   notas_producto: '',
   precio_venta: '',
   precio_costo: '',
@@ -72,6 +73,7 @@ export default function Productos() {
   const [categorias, setCategorias] = useState<Catalogo[]>([]);
   const [unidades, setUnidades] = useState<CatalogoUM[]>([]);
   const [proveedores, setProveedores] = useState<Tercero[]>([]);
+  const [variantes, setVariantes] = useState<Catalogo[]>([]);
   const [form, setForm] = useState(FORM_VACIO);
 
   // Filtros y ordenamiento
@@ -127,6 +129,8 @@ export default function Productos() {
       setCategorias(cat.data);
       setUnidades(uni.data);
       setProveedores(prov.data || []);
+      const vari = await api.get<ApiResponse<Catalogo[]>>('/catalogos/variantes-producto');
+      setVariantes(vari.data);
     } catch {
       /* catálogos pueden fallar si no hay proveedores */
     }
@@ -152,7 +156,7 @@ export default function Productos() {
       categoria_id: String(p.categoria_id),
       unidad_medida_id: String(p.unidad_medida_id),
       proveedor_nit: p.proveedor_nit || '',
-      variante: p.variante || '',
+      variante_id: p.variante_id ? String(p.variante_id) : '',
       notas_producto: p.notas || '',
       precio_venta: String(p.precio_venta / 100),
       precio_costo: String(p.precio_costo / 100),
@@ -193,7 +197,7 @@ export default function Productos() {
       categoria_id: Number(form.categoria_id),
       unidad_medida_id: Number(form.unidad_medida_id),
       proveedor_nit: form.proveedor_nit || undefined,
-      variante: form.variante || undefined,
+      variante_id: form.variante_id ? Number(form.variante_id) : undefined,
       notas: form.notas_producto || undefined,
       precio_venta: Math.round(Number(form.precio_venta) * 100),
       precio_costo: Math.round(Number(form.precio_costo) * 100),
@@ -314,13 +318,18 @@ export default function Productos() {
             <label className="block text-xs font-medium text-gray-600 mb-1">
               Variante / Presentación
             </label>
-            <input
-              type="text"
-              value={form.variante}
-              onChange={(e) => setForm({ ...form, variante: e.target.value })}
-              placeholder="Vainilla, Chocolate, NA..."
+            <select
+              value={form.variante_id}
+              onChange={(e) => setForm({ ...form, variante_id: e.target.value })}
               className="w-full bg-[#e0e5ec] rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
-            />
+            >
+              <option value="">-- Seleccionar --</option>
+              {variantes.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.nombre}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Notas</label>
