@@ -18,3 +18,15 @@ export const createGastoSchema = z.object({
   referencia_pago: z.string().max(100).optional(),
   notas: z.string().max(1000).optional(),
 });
+
+// Edición limitada: solo campos no contables (descripción, notas, referencia)
+export const updateGastoSchema = z.object({
+  descripcion: z
+    .string()
+    .min(3, 'La descripción debe tener al menos 3 caracteres')
+    .max(500)
+    .optional(),
+  referencia_pago: z.string().max(100).optional(),
+  notas: z.string().max(1000).optional(),
+  updated_by: z.string().max(50).optional(),
+});

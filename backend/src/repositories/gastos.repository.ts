@@ -21,9 +21,13 @@ export interface Gasto {
   fecha_pago: string;
   metodo_pago_id: number | null;
   referencia_pago: string | null;
+  estado: string;
   notas: string | null;
   created_at: string;
   created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+  motivo_anulacion: string | null;
 }
 
 export interface GastoConRelaciones extends Gasto {
@@ -49,6 +53,19 @@ export interface CreateGastoData {
   referencia_pago?: string;
   notas?: string;
   created_by?: string;
+}
+
+/**
+ * Edición limitada de un gasto ya registrado.
+ * Por integridad contable SOLO se permiten campos no monetarios:
+ * descripción, notas y referencia de pago. Si el monto o periodo están mal,
+ * el gasto se anula y se registra uno nuevo (mantiene trazabilidad).
+ */
+export interface UpdateGastoData {
+  descripcion?: string;
+  referencia_pago?: string;
+  notas?: string;
+  updated_by?: string;
 }
 
 const SELECT_GASTO = `
@@ -135,12 +152,56 @@ export function create(data: CreateGastoData): GastoConRelaciones {
   return findById(Number(result.lastInsertRowid))!;
 }
 
+/**
+ * Edita solo campos no contables (descripción, notas, referencia) de un gasto
+ * en estado 'registrado'. No permite cambiar montos ni periodo.
+ * Devuelve undefined si el gasto no existe o ya está anulado.
+ */
+export function update(id: number, data: UpdateGastoData): GastoConRelaciones | undefined {
+  const db = getDatabase();
+  const current = db.prepare('SELECT * FROM gastos WHERE id = ?').get(id) as Gasto | undefined;
+  if (!current || current.estado === 'anulado') return undefined;
+
+  db.prepare(
+    `UPDATE gastos SET descripcion = ?, referencia_pago = ?, notas = ?,
+       updated_at = datetime('now'), updated_by = ?
+     WHERE id = ?`,
+  ).run(
+    data.descripcion ?? current.descripcion,
+    data.referencia_pago ?? current.referencia_pago,
+    data.notas ?? current.notas,
+    data.updated_by || null,
+    id,
+  );
+
+  return findById(id);
+}
+
+/**
+ * Anula un gasto dejando registro de quién y por qué.
+ * Devuelve false si el gasto no existe o ya está anulado.
+ */
+export function anular(id: number, updatedBy?: string, motivo?: string): boolean {
+  const db = getDatabase();
+  const current = db.prepare('SELECT estado FROM gastos WHERE id = ?').get(id) as
+    | { estado: string }
+    | undefined;
+  if (!current || current.estado === 'anulado') return false;
+
+  db.prepare(
+    `UPDATE gastos SET estado = 'anulado', updated_at = datetime('now'), updated_by = ?, motivo_anulacion = ?
+     WHERE id = ?`,
+  ).run(updatedBy || null, motivo || null, id);
+
+  return true;
+}
+
 /** Total de gastos por periodo */
 export function totalPorPeriodo(mes: number, anio: number): { total: number; count: number } {
   const db = getDatabase();
   const result = db
     .prepare(
-      'SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count FROM gastos WHERE periodo_mes = ? AND periodo_anio = ?',
+      "SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count FROM gastos WHERE periodo_mes = ? AND periodo_anio = ? AND estado != 'anulado'",
     )
     .get(mes, anio) as { total: number; count: number };
   return result;

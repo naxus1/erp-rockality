@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 interface Producto {
   sku: string;
@@ -38,6 +39,9 @@ interface VentaDetalle extends VentaResumen {
   subtotal: number;
   iva: number;
   notas: string | null;
+  updated_by: string | null;
+  updated_at: string | null;
+  motivo_anulacion: string | null;
   items: Array<{
     id: number;
     tipo_item: string;
@@ -81,8 +85,13 @@ function formatCOP(centavos: number): string {
 }
 
 export default function Ventas() {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [vista, setVista] = useState<'lista' | 'nueva' | 'detalle'>('lista');
+  // Modal de anulación (id de la venta a anular + motivo)
+  const [anularId, setAnularId] = useState<number | null>(null);
+  const [motivoAnulacion, setMotivoAnulacion] = useState('');
+  const [anulando, setAnulando] = useState(false);
   const [ventas, setVentas] = useState<VentaResumen[]>([]);
   const [ventaDetalle, setVentaDetalle] = useState<VentaDetalle | null>(null);
   const [error, setError] = useState('');
@@ -162,20 +171,41 @@ export default function Ventas() {
     }
   };
 
-  const anularVenta = async (id: number) => {
-    if (
-      !window.confirm('¿Anular esta venta? Se restaurará el stock y se cancelarán suscripciones.')
-    )
+  // Abre el modal que pide el motivo antes de anular
+  const abrirAnular = (id: number) => {
+    setAnularId(id);
+    setMotivoAnulacion('');
+    setError('');
+  };
+
+  const cerrarAnular = () => {
+    setAnularId(null);
+    setMotivoAnulacion('');
+  };
+
+  const confirmarAnular = async () => {
+    if (anularId === null) return;
+    if (!motivoAnulacion.trim()) {
+      setError('Debes indicar el motivo de la anulación');
       return;
+    }
+    setAnulando(true);
     setError('');
     setSuccess('');
     try {
-      await api.post(`/ventas/${id}/anular`, {});
+      await api.post(`/ventas/${anularId}/anular`, {
+        usuario_id: user?.id,
+        motivo: motivoAnulacion.trim(),
+      });
       setSuccess('Venta anulada. Stock restaurado.');
+      const anuladaId = anularId;
+      cerrarAnular();
       cargarVentas();
-      if (ventaDetalle?.id === id) setVista('lista');
+      if (ventaDetalle?.id === anuladaId) verDetalle(anuladaId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error anulando');
+    } finally {
+      setAnulando(false);
     }
   };
 
@@ -300,6 +330,46 @@ export default function Ventas() {
     }
   };
 
+  // Modal reutilizable para capturar el motivo de anulación
+  const modalAnular = anularId !== null && (
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+      <div className="w-full max-w-md rounded-xl neu-flat p-5" style={{ background: '#e0e5ec' }}>
+        <h3 className="text-base font-bold mb-1">Anular venta #{anularId}</h3>
+        <p className="text-xs text-gray-500 mb-3">
+          Se restaurará el stock y se cancelarán las suscripciones. Esta acción queda registrada.
+          Indica el motivo (obligatorio).
+        </p>
+        <textarea
+          value={motivoAnulacion}
+          onChange={(e) => setMotivoAnulacion(e.target.value)}
+          rows={3}
+          autoFocus
+          placeholder="Ej: cliente se arrepintió, error en el registro, pago rechazado..."
+          className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none resize-none"
+        />
+        {error && <p className="text-red-600 text-xs mt-2">{error}</p>}
+        <div className="flex justify-end gap-2 mt-4">
+          <button
+            onClick={cerrarAnular}
+            disabled={anulando}
+            className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+            title="Cancelar y no anular"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={confirmarAnular}
+            disabled={anulando || !motivoAnulacion.trim()}
+            className="bg-red-600 text-white font-medium px-4 py-2 rounded-lg text-sm disabled:bg-red-300"
+            title="Confirmar la anulación de la venta"
+          >
+            {anulando ? 'Anulando...' : 'Anular venta'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // ─── VISTA DETALLE ────────────────────────────────────
   if (vista === 'detalle' && ventaDetalle) {
     return (
@@ -351,6 +421,19 @@ export default function Ventas() {
               </div>
               {ventaDetalle.notas && (
                 <p className="text-xs text-gray-500">Notas: {ventaDetalle.notas}</p>
+              )}
+              {ventaDetalle.estado === 'anulada' && (
+                <div className="mt-2 rounded-lg bg-red-50 border border-red-200 p-2 text-xs text-red-700">
+                  <span className="font-medium">Venta anulada</span>
+                  {ventaDetalle.updated_by && <> por {ventaDetalle.updated_by}</>}
+                  {ventaDetalle.updated_at && <> el {ventaDetalle.updated_at.split(' ')[0]}</>}.
+                  {ventaDetalle.motivo_anulacion && (
+                    <>
+                      {' '}
+                      Motivo: <span className="italic">{ventaDetalle.motivo_anulacion}</span>
+                    </>
+                  )}
+                </div>
               )}
             </div>
 
@@ -501,7 +584,7 @@ export default function Ventas() {
             {/* Anular */}
             {ventaDetalle.estado !== 'anulada' && (
               <button
-                onClick={() => anularVenta(ventaDetalle.id)}
+                onClick={() => abrirAnular(ventaDetalle.id)}
                 className="w-full border border-red-300 text-red-600 py-1.5 rounded text-sm hover:bg-red-50"
                 title="Anular esta venta"
               >
@@ -510,6 +593,7 @@ export default function Ventas() {
             )}
           </div>
         </div>
+        {modalAnular}
       </div>
     );
   }
@@ -655,7 +739,7 @@ export default function Ventas() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              anularVenta(v.id);
+                              abrirAnular(v.id);
                             }}
                             className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
                             title="Anular venta"
@@ -683,6 +767,7 @@ export default function Ventas() {
             </tbody>
           </table>
         </div>
+        {modalAnular}
       </div>
     );
   }
