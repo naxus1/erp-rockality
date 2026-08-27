@@ -47,18 +47,25 @@ router.post('/', validate(createVentaSchema), (req: Request, res: Response) => {
 
 // POST /api/ventas/:id/anular — Anular venta (restaura stock, cancela suscripción)
 router.post('/:id/anular', (req: Request, res: Response) => {
-  const result = repo.anular(Number(req.params.id));
+  const motivo = typeof req.body.motivo === 'string' ? req.body.motivo.trim() : '';
+  if (!motivo) {
+    res.status(400).json({ success: false, error: 'El motivo de anulación es obligatorio' });
+    return;
+  }
+  const usuarioId = req.body.usuario_id || 'sistema';
+
+  const result = repo.anular(Number(req.params.id), usuarioId, motivo);
   if (!result) {
     res.status(400).json({ success: false, error: 'Venta no encontrada o ya anulada' });
     return;
   }
   registrarAudit({
-    usuario_id: 'sistema',
+    usuario_id: usuarioId,
     accion: 'anular',
     entidad: 'ventas',
-    entidad_id: req.params.id,
+    entidad_id: String(req.params.id),
     datos_anteriores: { estado: 'activa' },
-    datos_nuevos: { estado: 'anulada' },
+    datos_nuevos: { estado: 'anulada', motivo },
   });
   res.json({ success: true, message: 'Venta anulada. Stock restaurado.' });
 });

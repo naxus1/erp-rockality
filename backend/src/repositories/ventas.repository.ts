@@ -22,6 +22,9 @@ export interface Venta {
   notas: string | null;
   created_at: string;
   created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+  motivo_anulacion: string | null;
 }
 
 export interface VentaConCliente extends Venta {
@@ -284,7 +287,7 @@ export function create(data: CreateVentaData): VentaDetallada {
   return findById(ventaId)!;
 }
 
-export function anular(id: number, updatedBy?: string): boolean {
+export function anular(id: number, updatedBy?: string, motivo?: string): boolean {
   const db = getDatabase();
 
   const anularVenta = db.transaction(() => {
@@ -309,8 +312,10 @@ export function anular(id: number, updatedBy?: string): boolean {
     // Cancelar suscripciones vinculadas
     db.prepare("UPDATE suscripciones SET estado = 'cancelada' WHERE venta_id = ?").run(id);
 
-    // Marcar venta como anulada
-    db.prepare("UPDATE ventas SET estado = 'anulada' WHERE id = ?").run(id);
+    // Marcar venta como anulada, dejando registro de quién, cuándo y por qué
+    db.prepare(
+      "UPDATE ventas SET estado = 'anulada', updated_at = datetime('now'), updated_by = ?, motivo_anulacion = ? WHERE id = ?",
+    ).run(updatedBy || null, motivo || null, id);
 
     return true;
   });

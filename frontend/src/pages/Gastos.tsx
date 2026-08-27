@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 interface Gasto {
   id: number;
@@ -18,6 +19,9 @@ interface Gasto {
   referencia_pago: string | null;
   estado: string;
   recurrente: number;
+  notas: string | null;
+  updated_by: string | null;
+  motivo_anulacion: string | null;
 }
 interface Catalogo {
   id: number;
@@ -43,10 +47,21 @@ function formatCOP(centavos: number): string {
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 export default function Gastos() {
+  const { user } = useAuth();
   const [vista, setVista] = useState<'lista' | 'nuevo'>('lista');
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Modal de edición limitada (solo descripción, referencia, notas)
+  const [editGasto, setEditGasto] = useState<Gasto | null>(null);
+  const [editForm, setEditForm] = useState({ descripcion: '', referencia_pago: '', notas: '' });
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+
+  // Modal de anulación (id + motivo obligatorio)
+  const [anularId, setAnularId] = useState<number | null>(null);
+  const [motivoAnulacion, setMotivoAnulacion] = useState('');
+  const [anulando, setAnulando] = useState(false);
 
   // Filtros
   const [filtroMes, setFiltroMes] = useState(String(new Date().getMonth() + 1));
@@ -105,6 +120,83 @@ export default function Gastos() {
       setTerceros(t.data);
     } catch {
       /* */
+    }
+  };
+
+  // ─── Edición limitada ───────────────────────────────
+  const abrirEditar = (g: Gasto) => {
+    setEditGasto(g);
+    setEditForm({
+      descripcion: g.descripcion,
+      referencia_pago: g.referencia_pago || '',
+      notas: g.notas || '',
+    });
+    setError('');
+    setSuccess('');
+  };
+
+  const cerrarEditar = () => {
+    setEditGasto(null);
+  };
+
+  const guardarEdicion = async () => {
+    if (!editGasto) return;
+    if (!editForm.descripcion.trim()) {
+      setError('La descripción es obligatoria');
+      return;
+    }
+    setGuardandoEdicion(true);
+    setError('');
+    try {
+      await api.put(`/gastos/${editGasto.id}`, {
+        descripcion: editForm.descripcion.trim(),
+        referencia_pago: editForm.referencia_pago.trim() || undefined,
+        notas: editForm.notas.trim() || undefined,
+        updated_by: user?.id,
+      });
+      setSuccess('Gasto actualizado');
+      cerrarEditar();
+      cargarGastos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error actualizando');
+    } finally {
+      setGuardandoEdicion(false);
+    }
+  };
+
+  // ─── Anulación ──────────────────────────────────────
+  const abrirAnular = (id: number) => {
+    setAnularId(id);
+    setMotivoAnulacion('');
+    setError('');
+    setSuccess('');
+  };
+
+  const cerrarAnular = () => {
+    setAnularId(null);
+    setMotivoAnulacion('');
+  };
+
+  const confirmarAnular = async () => {
+    if (anularId === null) return;
+    if (!motivoAnulacion.trim()) {
+      setError('Debes indicar el motivo de la anulación');
+      return;
+    }
+    setAnulando(true);
+    setError('');
+    try {
+      await api.post(`/gastos/${anularId}/anular`, {
+        usuario_id: user?.id,
+        motivo: motivoAnulacion.trim(),
+      });
+      setSuccess('Gasto anulado');
+      cerrarAnular();
+      cargarGastos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error anulando');
+    } finally {
+      setAnulando(false);
     }
   };
 
@@ -241,12 +333,13 @@ export default function Gastos() {
                 <th className="px-3 py-2">Tipo</th>
                 <th className="px-3 py-2 text-right">Total</th>
                 <th className="px-3 py-2">Estado</th>
+                <th className="px-3 py-2 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {gastos.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-4 text-center text-gray-400">
+                  <td colSpan={8} className="px-3 py-4 text-center text-gray-400">
                     No hay gastos en este periodo
                   </td>
                 </tr>
@@ -255,7 +348,14 @@ export default function Gastos() {
                   <tr key={g.id} className="border-t border-gray-100 hover:bg-gray-50">
                     <td className="px-3 py-2 text-xs">{g.fecha_pago}</td>
                     <td className="px-3 py-2">{g.tercero_nombre}</td>
-                    <td className="px-3 py-2 text-xs">{g.descripcion}</td>
+                    <td className="px-3 py-2 text-xs">
+                      {g.descripcion}
+                      {g.estado === 'anulado' && g.motivo_anulacion && (
+                        <span className="block text-red-500 italic">
+                          Anulado{g.updated_by ? ` por ${g.updated_by}` : ''}: {g.motivo_anulacion}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 text-xs">{g.gerencia_nombre}</td>
                     <td className="px-3 py-2 text-xs">{g.tipo_gasto_nombre}</td>
                     <td className="px-3 py-2 text-right font-medium">{formatCOP(g.total)}</td>
@@ -266,12 +366,159 @@ export default function Gastos() {
                         {g.estado}
                       </span>
                     </td>
+                    <td className="px-3 py-2 text-right">
+                      {g.estado === 'registrado' && (
+                        <>
+                          <button
+                            onClick={() => abrirEditar(g)}
+                            className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1.5 rounded-lg transition-colors"
+                            title="Editar descripción, referencia o notas"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => abrirAnular(g.id)}
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1.5 rounded-lg transition-colors ml-1"
+                            title="Anular gasto"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Modal edición limitada */}
+        {editGasto && (
+          <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+            <div
+              className="w-full max-w-md rounded-xl neu-flat p-5"
+              style={{ background: '#e0e5ec' }}
+            >
+              <h3 className="text-base font-bold mb-1">Editar gasto #{editGasto.id}</h3>
+              <p className="text-xs text-gray-500 mb-3">
+                Solo se pueden editar descripción, referencia y notas. Para corregir montos o
+                periodo, anula el gasto y registra uno nuevo.
+              </p>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Descripción *</label>
+              <input
+                type="text"
+                value={editForm.descripcion}
+                onChange={(e) => setEditForm({ ...editForm, descripcion: e.target.value })}
+                className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none mb-3"
+              />
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Referencia de pago
+              </label>
+              <input
+                type="text"
+                value={editForm.referencia_pago}
+                onChange={(e) => setEditForm({ ...editForm, referencia_pago: e.target.value })}
+                className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none mb-3"
+              />
+              <label className="block text-xs font-medium text-gray-600 mb-1">Notas</label>
+              <textarea
+                value={editForm.notas}
+                onChange={(e) => setEditForm({ ...editForm, notas: e.target.value })}
+                rows={2}
+                className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none resize-none"
+              />
+              {error && <p className="text-red-600 text-xs mt-2">{error}</p>}
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  onClick={cerrarEditar}
+                  disabled={guardandoEdicion}
+                  className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+                  title="Descartar cambios"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={guardarEdicion}
+                  disabled={guardandoEdicion || !editForm.descripcion.trim()}
+                  className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn disabled:opacity-50"
+                  title="Guardar los cambios del gasto"
+                >
+                  {guardandoEdicion ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal anulación */}
+        {anularId !== null && (
+          <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+            <div
+              className="w-full max-w-md rounded-xl neu-flat p-5"
+              style={{ background: '#e0e5ec' }}
+            >
+              <h3 className="text-base font-bold mb-1">Anular gasto #{anularId}</h3>
+              <p className="text-xs text-gray-500 mb-3">
+                El gasto quedará marcado como anulado y no sumará al total del periodo. Esta acción
+                queda registrada. Indica el motivo (obligatorio).
+              </p>
+              <textarea
+                value={motivoAnulacion}
+                onChange={(e) => setMotivoAnulacion(e.target.value)}
+                rows={3}
+                autoFocus
+                placeholder="Ej: monto mal digitado, gasto duplicado, error de tercero..."
+                className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none resize-none"
+              />
+              {error && <p className="text-red-600 text-xs mt-2">{error}</p>}
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  onClick={cerrarAnular}
+                  disabled={anulando}
+                  className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+                  title="Cancelar y no anular"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarAnular}
+                  disabled={anulando || !motivoAnulacion.trim()}
+                  className="bg-red-600 text-white font-medium px-4 py-2 rounded-lg text-sm disabled:bg-red-300"
+                  title="Confirmar la anulación del gasto"
+                >
+                  {anulando ? 'Anulando...' : 'Anular gasto'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
