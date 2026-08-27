@@ -11,6 +11,7 @@ interface Plan {
   porcentaje_iva: number;
   descripcion: string | null;
   activo: number;
+  motivo_inactivacion: string | null;
 }
 interface Suscripcion {
   id: number;
@@ -58,6 +59,11 @@ export default function Planes() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [form, setForm] = useState(FORM_VACIO);
+
+  // Modal inactivar plan (id + motivo obligatorio)
+  const [inactivarId, setInactivarId] = useState<number | null>(null);
+  const [motivoInactivacion, setMotivoInactivacion] = useState('');
+  const [inactivando, setInactivando] = useState(false);
 
   const cargarPlanes = async () => {
     try {
@@ -140,6 +146,51 @@ export default function Planes() {
     }
   };
 
+  // ─── Inactivar / Reactivar ──────────────────────────
+  const abrirInactivar = (id: number) => {
+    setInactivarId(id);
+    setMotivoInactivacion('');
+    setError('');
+    setSuccess('');
+  };
+  const cerrarInactivar = () => {
+    setInactivarId(null);
+    setMotivoInactivacion('');
+  };
+  const confirmarInactivar = async () => {
+    if (inactivarId === null) return;
+    if (!motivoInactivacion.trim()) {
+      setError('Debes indicar el motivo de la inactivación');
+      return;
+    }
+    setInactivando(true);
+    setError('');
+    try {
+      await api.put(`/planes/${inactivarId}`, {
+        activo: 0,
+        motivo_inactivacion: motivoInactivacion.trim(),
+      });
+      setSuccess('Plan inactivado');
+      cerrarInactivar();
+      cargarPlanes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error inactivando');
+    } finally {
+      setInactivando(false);
+    }
+  };
+  const reactivar = async (id: number) => {
+    setError('');
+    setSuccess('');
+    try {
+      await api.put(`/planes/${id}`, { activo: 1 });
+      setSuccess('Plan reactivado');
+      cargarPlanes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error reactivando');
+    }
+  };
+
   return (
     <div>
       {/* Tabs */}
@@ -195,6 +246,7 @@ export default function Planes() {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Modalidad *</label>
                 <select
+                  required
                   value={form.modalidad}
                   onChange={(e) => setForm({ ...form, modalidad: e.target.value })}
                   className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
@@ -304,9 +356,19 @@ export default function Planes() {
                       <td className="px-3 py-2">
                         <span
                           className={`text-xs px-2 py-0.5 rounded ${p.activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}
+                          title={
+                            !p.activo && p.motivo_inactivacion
+                              ? `Motivo: ${p.motivo_inactivacion}`
+                              : undefined
+                          }
                         >
                           {p.activo ? 'Activo' : 'Inactivo'}
                         </span>
+                        {!p.activo && p.motivo_inactivacion && (
+                          <span className="block text-[10px] text-gray-400 italic mt-0.5">
+                            {p.motivo_inactivacion}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         <button
@@ -329,6 +391,49 @@ export default function Planes() {
                             />
                           </svg>
                         </button>
+                        {p.activo ? (
+                          <button
+                            onClick={() => abrirInactivar(p.id)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition-colors ml-1"
+                            title="Inactivar plan"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                              />
+                            </svg>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => reactivar(p.id)}
+                            className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1.5 rounded-lg transition-colors ml-1"
+                            title="Reactivar plan"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -399,6 +504,49 @@ export default function Planes() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modal inactivar plan */}
+      {inactivarId !== null && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+          <div
+            className="w-full max-w-md rounded-xl neu-flat p-5"
+            style={{ background: '#e0e5ec' }}
+          >
+            <h3 className="text-base font-bold mb-1">Inactivar plan</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              El plan dejará de estar disponible para nuevas ventas. Las suscripciones actuales no
+              se afectan. Indica el motivo (obligatorio) para el historial.
+            </p>
+            <textarea
+              value={motivoInactivacion}
+              onChange={(e) => setMotivoInactivacion(e.target.value)}
+              rows={3}
+              autoFocus
+              placeholder="Ej: se reemplazó por un plan nuevo, dejó de ofrecerse, precio desactualizado..."
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none resize-none"
+            />
+            {error && <p className="text-red-600 text-xs mt-2">{error}</p>}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={cerrarInactivar}
+                disabled={inactivando}
+                className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+                title="Cancelar y no inactivar"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarInactivar}
+                disabled={inactivando || !motivoInactivacion.trim()}
+                className="bg-red-600 text-white font-medium px-4 py-2 rounded-lg text-sm disabled:bg-red-300"
+                title="Confirmar la inactivación del plan"
+              >
+                {inactivando ? 'Inactivando...' : 'Inactivar plan'}
+              </button>
+            </div>
           </div>
         </div>
       )}

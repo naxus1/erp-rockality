@@ -100,7 +100,7 @@ export default function Ventas() {
   // Filtros
   const [filtroEstado, setFiltroEstado] = useState(searchParams.get('estado') || '');
   const [filtroTipo, setFiltroTipo] = useState('');
-  const [ordenarPor, setOrdenarPor] = useState<'fecha' | 'total' | 'cliente'>('fecha');
+  const [ordenarPor, setOrdenarPor] = useState<'fecha' | 'total' | 'cliente' | 'estado'>('fecha');
   const [ordenDir, setOrdenDir] = useState<'asc' | 'desc'>('desc');
 
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -691,7 +691,15 @@ export default function Ventas() {
                 >
                   Total {ordenarPor === 'total' && (ordenDir === 'desc' ? '↓' : '↑')}
                 </th>
-                <th className="px-3 py-2">Estado</th>
+                <th
+                  className="px-3 py-2 cursor-pointer hover:text-gray-900"
+                  onClick={() => {
+                    setOrdenarPor('estado');
+                    setOrdenDir(ordenarPor === 'estado' && ordenDir === 'asc' ? 'desc' : 'asc');
+                  }}
+                >
+                  Estado {ordenarPor === 'estado' && (ordenDir === 'asc' ? '↑' : '↓')}
+                </th>
                 <th className="px-3 py-2"></th>
               </tr>
             </thead>
@@ -710,6 +718,8 @@ export default function Ventas() {
                     else if (ordenarPor === 'total') cmp = a.total - b.total;
                     else if (ordenarPor === 'cliente')
                       cmp = (a.cliente_nombre || '').localeCompare(b.cliente_nombre || '');
+                    else if (ordenarPor === 'estado')
+                      cmp = (a.estado || '').localeCompare(b.estado || '');
                     return ordenDir === 'desc' ? -cmp : cmp;
                   })
                   .map((v) => (

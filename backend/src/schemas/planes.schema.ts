@@ -19,4 +19,5 @@ export const updatePlanSchema = z.object({
   porcentaje_iva: z.number().int().min(0).max(100).optional(),
   descripcion: z.string().max(500).optional(),
   activo: z.number().int().min(0).max(1).optional(),
+  motivo_inactivacion: z.string().max(500).nullable().optional(),
 });
