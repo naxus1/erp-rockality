@@ -2,24 +2,24 @@
 
 ## Resumen Ejecutivo
 
-| Aspecto | Detalle |
-|---|---|
-| Proyecto | ERP básico para gimnasio |
-| Volumen | ~3000 registros históricos, ~50 registros/mes |
-| Usuarios | 2 actuales (Admin operativo + Gerente), máximo 10 a futuro |
-| Presupuesto AWS | Máximo $15 USD/mes (estimado real: $1-3/mes) |
-| Stack | React + Node.js/TypeScript + SQLite + AWS Serverless |
-| Región | us-east-1 (N. Virginia) |
-| Repositorio | GitHub |
-| Dominio | CloudFront genérico (sin dominio propio por ahora) |
+| Aspecto         | Detalle                                                    |
+| --------------- | ---------------------------------------------------------- |
+| Proyecto        | ERP básico para gimnasio                                   |
+| Volumen         | ~3000 registros históricos, ~50 registros/mes              |
+| Usuarios        | 2 actuales (Admin operativo + Gerente), máximo 10 a futuro |
+| Presupuesto AWS | Máximo $15 USD/mes (estimado real: $1-3/mes)               |
+| Stack           | React + Node.js/TypeScript + SQLite + AWS Serverless       |
+| Región          | us-east-1 (N. Virginia)                                    |
+| Repositorio     | GitHub                                                     |
+| Dominio         | CloudFront genérico (sin dominio propio por ahora)         |
 
 ### Productos y servicios
 
-| Categoría | Productos | Modalidad |
-|---|---|---|
+| Categoría               | Productos                          | Modalidad            |
+| ----------------------- | ---------------------------------- | -------------------- |
 | Planes de entrenamiento | 3 planes con diferentes duraciones | Presencial + Virtual |
-| Accesorios | Guantes, vendas | Venta directa |
-| Suplementos | Creatina, suplementos deportivos | Venta directa |
+| Accesorios              | Guantes, vendas                    | Venta directa        |
+| Suplementos             | Creatina, suplementos deportivos   | Venta directa        |
 
 ---
 
@@ -27,119 +27,119 @@
 
 ### 1. GitHub (Repositorio y CI/CD)
 
-| Aspecto | Detalle |
-|---|---|
-| **¿Por qué GitHub?** | Integración nativa con GitHub Actions (CI/CD sin herramientas adicionales), ecosistema más grande de la industria, GitHub Copilot compatible, free tier generoso para repos privados |
-| **Alternativas descartadas** | GitLab (más complejo de administrar para 1-2 devs), BitBucket (menor ecosistema de Actions), CodeCommit (deprecated por AWS) |
-| **Máximo que soporta** | Repos privados ilimitados (plan free), 2000 minutos/mes de GitHub Actions (free tier), artifacts de 500MB, archivos individuales de hasta 100MB |
-| **Cuándo migrar** | Si el equipo crece a +20 devs y necesita GitLab CI/CD avanzado o self-hosted runners |
+| Aspecto                      | Detalle                                                                                                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **¿Por qué GitHub?**         | Integración nativa con GitHub Actions (CI/CD sin herramientas adicionales), ecosistema más grande de la industria, GitHub Copilot compatible, free tier generoso para repos privados |
+| **Alternativas descartadas** | GitLab (más complejo de administrar para 1-2 devs), BitBucket (menor ecosistema de Actions), CodeCommit (deprecated por AWS)                                                         |
+| **Máximo que soporta**       | Repos privados ilimitados (plan free), 2000 minutos/mes de GitHub Actions (free tier), artifacts de 500MB, archivos individuales de hasta 100MB                                      |
+| **Cuándo migrar**            | Si el equipo crece a +20 devs y necesita GitLab CI/CD avanzado o self-hosted runners                                                                                                 |
 
 ---
 
 ### 2. AWS Lambda + API Gateway (Backend Compute)
 
-| Aspecto | Detalle |
-|---|---|
-| **¿Por qué Lambda?** | Pago por uso real (con ~15,000 requests/mes sigue en free tier), cero administración de servidores, escala automática, integración nativa con todo el stack AWS |
-| **Alternativas descartadas** | EC2 (mínimo ~$4/mes y hay que mantener el servidor), ECS Fargate (~$10/mes mínimo), Lightsail ($3.50/mes pero requiere mantenimiento) |
-| **Máximo que soporta** | 1000 invocaciones concurrentes (default), 15 min timeout, 10GB memoria, 1M requests/mes en free tier (primer año), luego $0.20 por 1M requests |
-| **Estimación de uso real** | Admin (7h/día, 26 días): ~11,700 req/mes + Gerente (4 sesiones/semana): ~750 req/mes = **~12,000-15,000 req/mes** (1.5% del free tier). Con 10 usuarios: ~75,000/mes (7.5% del free tier, aún $0) |
-| **Cuándo migrar** | Si las invocaciones superan 500K/mes consistentemente o el cold start se vuelve inaceptable (improbable con 10 usuarios) |
+| Aspecto                      | Detalle                                                                                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **¿Por qué Lambda?**         | Pago por uso real (con ~15,000 requests/mes sigue en free tier), cero administración de servidores, escala automática, integración nativa con todo el stack AWS                                   |
+| **Alternativas descartadas** | EC2 (mínimo ~$4/mes y hay que mantener el servidor), ECS Fargate (~$10/mes mínimo), Lightsail ($3.50/mes pero requiere mantenimiento)                                                             |
+| **Máximo que soporta**       | 1000 invocaciones concurrentes (default), 15 min timeout, 10GB memoria, 1M requests/mes en free tier (primer año), luego $0.20 por 1M requests                                                    |
+| **Estimación de uso real**   | Admin (7h/día, 26 días): ~11,700 req/mes + Gerente (4 sesiones/semana): ~750 req/mes = **~12,000-15,000 req/mes** (1.5% del free tier). Con 10 usuarios: ~75,000/mes (7.5% del free tier, aún $0) |
+| **Cuándo migrar**            | Si las invocaciones superan 500K/mes consistentemente o el cold start se vuelve inaceptable (improbable con 10 usuarios)                                                                          |
 
 ---
 
 ### 3. SQLite en EFS (Base de Datos)
 
-| Aspecto | Detalle |
-|---|---|
-| **¿Por qué SQLite?** | Cero costo de servicio de base de datos ($12/mes de RDS ahorrado), rendimiento excelente para lecturas, esquema relacional completo, cero administración, backup simple (un solo archivo) |
-| **¿Por qué EFS?** | Persistencia entre invocaciones Lambda, montaje como filesystem nativo, cifrado incluido, compatible con SQLite WAL mode |
-| **Alternativas descartadas** | RDS PostgreSQL ($12-15/mes, oversized), DynamoDB (NoSQL complica reportes y queries complejas), Aurora Serverless (mínimo ~$2/mes pero overkill) |
-| **Máximo que soporta** | SQLite maneja hasta ~1TB de datos y millones de registros sin problema. Con WAL mode, soporta lecturas concurrentes ilimitadas + 1 escritor a la vez. Con 10 usuarios y ~600 registros/año, no llegarás al límite en décadas |
-| **Limitación real** | Una sola escritura a la vez (no es problema con 10 usuarios escribiendo esporádicamente). Si llegas a +50 escrituras/segundo consistentes, migrar a RDS |
-| **Cuándo migrar** | Si necesitas escrituras concurrentes pesadas (+50/seg) o replicación multi-región |
+| Aspecto                      | Detalle                                                                                                                                                                                                                      |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **¿Por qué SQLite?**         | Cero costo de servicio de base de datos ($12/mes de RDS ahorrado), rendimiento excelente para lecturas, esquema relacional completo, cero administración, backup simple (un solo archivo)                                    |
+| **¿Por qué EFS?**            | Persistencia entre invocaciones Lambda, montaje como filesystem nativo, cifrado incluido, compatible con SQLite WAL mode                                                                                                     |
+| **Alternativas descartadas** | RDS PostgreSQL ($12-15/mes, oversized), DynamoDB (NoSQL complica reportes y queries complejas), Aurora Serverless (mínimo ~$2/mes pero overkill)                                                                             |
+| **Máximo que soporta**       | SQLite maneja hasta ~1TB de datos y millones de registros sin problema. Con WAL mode, soporta lecturas concurrentes ilimitadas + 1 escritor a la vez. Con 10 usuarios y ~600 registros/año, no llegarás al límite en décadas |
+| **Limitación real**          | Una sola escritura a la vez (no es problema con 10 usuarios escribiendo esporádicamente). Si llegas a +50 escrituras/segundo consistentes, migrar a RDS                                                                      |
+| **Cuándo migrar**            | Si necesitas escrituras concurrentes pesadas (+50/seg) o replicación multi-región                                                                                                                                            |
 
 ---
 
 ### 4. S3 + CloudFront (Frontend Hosting)
 
-| Aspecto | Detalle |
-|---|---|
-| **¿Por qué S3 + CloudFront?** | Hosting estático virtualmente gratis, CDN global (carga rápida desde cualquier lugar), HTTPS automático, cero mantenimiento |
+| Aspecto                                  | Detalle                                                                                                                                                                             |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **¿Por qué S3 + CloudFront?**            | Hosting estático virtualmente gratis, CDN global (carga rápida desde cualquier lugar), HTTPS automático, cero mantenimiento                                                         |
 | **¿Por qué dominio genérico por ahora?** | Ahorra ~$12/año del dominio + certificado. El URL de CloudFront (d1234.cloudfront.net) funciona perfecto para 2-10 usuarios internos. Se puede agregar dominio después sin downtime |
-| **Alternativas descartadas** | Amplify Hosting (abstracción innecesaria, menos control), Vercel/Netlify (dependencia de tercero fuera de AWS, posibles costos ocultos) |
-| **Máximo que soporta** | S3: 5TB por objeto, almacenamiento ilimitado. CloudFront: 250K requests/segundo, 40Gbps. Para un SPA de ~5MB con 10 usuarios, jamás tocas estos límites |
-| **Cuándo agregar dominio** | Cuando quieras una URL amigable para el equipo o clientes externos |
+| **Alternativas descartadas**             | Amplify Hosting (abstracción innecesaria, menos control), Vercel/Netlify (dependencia de tercero fuera de AWS, posibles costos ocultos)                                             |
+| **Máximo que soporta**                   | S3: 5TB por objeto, almacenamiento ilimitado. CloudFront: 250K requests/segundo, 40Gbps. Para un SPA de ~5MB con 10 usuarios, jamás tocas estos límites                             |
+| **Cuándo agregar dominio**               | Cuando quieras una URL amigable para el equipo o clientes externos                                                                                                                  |
 
 ---
 
 ### 5. AWS Cognito (Autenticación)
 
-| Aspecto | Detalle |
-|---|---|
-| **¿Por qué Cognito?** | Servicio managed de auth, MFA incluido, JWT estándar, free tier de 50K MAUs (usuarios activos mensuales), cero código de auth que mantener |
+| Aspecto                      | Detalle                                                                                                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **¿Por qué Cognito?**        | Servicio managed de auth, MFA incluido, JWT estándar, free tier de 50K MAUs (usuarios activos mensuales), cero código de auth que mantener                                           |
 | **Alternativas descartadas** | Auth0 (free tier limitado a 7K MAUs, posible costo futuro), Firebase Auth (fuera del ecosistema AWS, agrega complejidad), auth custom (riesgo de seguridad, más código que mantener) |
-| **Máximo que soporta** | 50,000 MAUs gratis, luego $0.0055/MAU. Con 10 usuarios máximo, jamás pagas un centavo |
-| **Cuándo migrar** | Si necesitas SSO empresarial, SAML, o integraciones complejas que Cognito no soporte bien (raro para este caso) |
+| **Máximo que soporta**       | 50,000 MAUs gratis, luego $0.0055/MAU. Con 10 usuarios máximo, jamás pagas un centavo                                                                                                |
+| **Cuándo migrar**            | Si necesitas SSO empresarial, SAML, o integraciones complejas que Cognito no soporte bien (raro para este caso)                                                                      |
 
 ---
 
 ### 6. React + Vite + TypeScript (Frontend Framework)
 
-| Aspecto | Detalle |
-|---|---|
-| **¿Por qué React?** | Ecosistema más grande, mayor disponibilidad de componentes y bibliotecas, facilidad para encontrar desarrolladores si el equipo crece |
-| **¿Por qué Vite?** | Build ultrarrápido (10x más rápido que Webpack), HMR instantáneo en desarrollo, configuración mínima, estándar actual de la industria |
-| **¿Por qué TypeScript?** | Previene bugs en tiempo de desarrollo, mejor autocompletado, documentación implícita del código, facilita mantenimiento a largo plazo |
+| Aspecto                      | Detalle                                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **¿Por qué React?**          | Ecosistema más grande, mayor disponibilidad de componentes y bibliotecas, facilidad para encontrar desarrolladores si el equipo crece |
+| **¿Por qué Vite?**           | Build ultrarrápido (10x más rápido que Webpack), HMR instantáneo en desarrollo, configuración mínima, estándar actual de la industria |
+| **¿Por qué TypeScript?**     | Previene bugs en tiempo de desarrollo, mejor autocompletado, documentación implícita del código, facilita mantenimiento a largo plazo |
 | **Alternativas descartadas** | Next.js (necesita servidor, overkill para SPA interna), Vue (menor ecosistema), Angular (curva de aprendizaje alta, verboso para MVP) |
-| **Máximo que soporta** | Sin límite técnico real. React maneja aplicaciones con miles de componentes y millones de usuarios |
+| **Máximo que soporta**       | Sin límite técnico real. React maneja aplicaciones con miles de componentes y millones de usuarios                                    |
 
 ---
 
 ### 7. Node.js + Express (Backend Framework)
 
-| Aspecto | Detalle |
-|---|---|
-| **¿Por qué Node.js?** | Mismo lenguaje que el frontend (TypeScript full-stack), excelente rendimiento en I/O, ecosystem maduro, cold start rápido en Lambda |
-| **¿Por qué Express?** | Framework HTTP minimalista, extensible con middleware, patrón conocido, funciona perfecto en Lambda con `serverless-express` |
+| Aspecto                      | Detalle                                                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **¿Por qué Node.js?**        | Mismo lenguaje que el frontend (TypeScript full-stack), excelente rendimiento en I/O, ecosystem maduro, cold start rápido en Lambda                     |
+| **¿Por qué Express?**        | Framework HTTP minimalista, extensible con middleware, patrón conocido, funciona perfecto en Lambda con `serverless-express`                            |
 | **Alternativas descartadas** | Fastify (más rápido pero menos ecosistema de middleware), NestJS (overkill para un MVP, mucha abstracción), Python/Flask (segundo lenguaje innecesario) |
-| **Máximo que soporta** | Node.js en Lambda maneja miles de requests concurrentes. Express no tiene límite de rutas o middlewares práctico |
+| **Máximo que soporta**       | Node.js en Lambda maneja miles de requests concurrentes. Express no tiene límite de rutas o middlewares práctico                                        |
 
 ---
 
 ### 8. us-east-1 (Región AWS)
 
-| Aspecto | Detalle |
-|---|---|
-| **¿Por qué us-east-1?** | Precios más bajos de todas las regiones, mayor disponibilidad de servicios, primera región en recibir features nuevos, CloudFront distribuye globalmente de cualquier forma |
-| **Alternativas consideradas** | sa-east-1 São Paulo (más cercana geográficamente a Colombia, pero ~20-30% más cara), us-west-2 (similar precio pero sin ventaja) |
-| **Latencia** | ~80-120ms desde Colombia a us-east-1. Con CloudFront como CDN, el frontend carga desde edge location en Bogotá. Las llamadas API tendrán ~100ms de latencia — imperceptible para un ERP interno |
-| **Cuándo cambiar** | Si se necesita cumplimiento de datos en Colombia (regulación) o la latencia API se vuelve crítica (improbable) |
+| Aspecto                       | Detalle                                                                                                                                                                                         |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **¿Por qué us-east-1?**       | Precios más bajos de todas las regiones, mayor disponibilidad de servicios, primera región en recibir features nuevos, CloudFront distribuye globalmente de cualquier forma                     |
+| **Alternativas consideradas** | sa-east-1 São Paulo (más cercana geográficamente a Colombia, pero ~20-30% más cara), us-west-2 (similar precio pero sin ventaja)                                                                |
+| **Latencia**                  | ~80-120ms desde Colombia a us-east-1. Con CloudFront como CDN, el frontend carga desde edge location en Bogotá. Las llamadas API tendrán ~100ms de latencia — imperceptible para un ERP interno |
+| **Cuándo cambiar**            | Si se necesita cumplimiento de datos en Colombia (regulación) o la latencia API se vuelve crítica (improbable)                                                                                  |
 
 ---
 
 ### 9. AWS SAM (Infraestructura como Código)
 
-| Aspecto | Detalle |
-|---|---|
-| **¿Por qué SAM?** | Extensión de CloudFormation optimizada para serverless, sintaxis simplificada para Lambda + API Gateway, CLI integrado para local testing, deploy en un comando |
+| Aspecto                      | Detalle                                                                                                                                                                                         |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **¿Por qué SAM?**            | Extensión de CloudFormation optimizada para serverless, sintaxis simplificada para Lambda + API Gateway, CLI integrado para local testing, deploy en un comando                                 |
 | **Alternativas descartadas** | CDK (más poderoso pero más complejo para un proyecto pequeño), Terraform (multi-cloud innecesario, otra herramienta que aprender), Serverless Framework (vendor lock-in al framework, no a AWS) |
-| **Máximo que soporta** | 500 recursos por stack CloudFormation. Este proyecto usará ~15-20 recursos — margen enorme |
-| **Cuándo migrar** | Si la infra crece a +200 recursos o necesitas multi-cloud, considerar CDK o Terraform |
+| **Máximo que soporta**       | 500 recursos por stack CloudFormation. Este proyecto usará ~15-20 recursos — margen enorme                                                                                                      |
+| **Cuándo migrar**            | Si la infra crece a +200 recursos o necesitas multi-cloud, considerar CDK o Terraform                                                                                                           |
 
 ---
 
 ### Resumen de límites de escalabilidad
 
-| Componente | Uso actual | Máximo soportado | Factor de holgura |
-|---|---|---|---|
-| Lambda invocaciones | ~12,000-15,000/mes | 1,000,000/mes (free) | 66x |
-| Cognito usuarios | 2 | 50,000 (free) | 25,000x |
-| SQLite registros | 3,000 | ~10,000,000 | 3,333x |
-| S3 almacenamiento | ~5MB | Ilimitado | ∞ |
-| CloudFront requests | ~500/mes | 10,000,000/mes | 20,000x |
-| EFS almacenamiento | ~1MB | Petabytes | >1,000,000x |
-| API Gateway | ~50/mes | 10,000/segundo | Absurdo |
+| Componente          | Uso actual         | Máximo soportado     | Factor de holgura |
+| ------------------- | ------------------ | -------------------- | ----------------- |
+| Lambda invocaciones | ~12,000-15,000/mes | 1,000,000/mes (free) | 66x               |
+| Cognito usuarios    | 2                  | 50,000 (free)        | 25,000x           |
+| SQLite registros    | 3,000              | ~10,000,000          | 3,333x            |
+| S3 almacenamiento   | ~5MB               | Ilimitado            | ∞                 |
+| CloudFront requests | ~500/mes           | 10,000,000/mes       | 20,000x           |
+| EFS almacenamiento  | ~1MB               | Petabytes            | >1,000,000x       |
+| API Gateway         | ~50/mes            | 10,000/segundo       | Absurdo           |
 
 > **Conclusión:** Con esta arquitectura, podrías manejar 10,000 clientes, 100 usuarios concurrentes, y millones de registros SIN cambiar nada. El sistema está diseñado para que lo único que cambie sea la factura de AWS (y aun así, llegarías a los $15/mes recién con miles de transacciones diarias).
 
@@ -186,28 +186,31 @@
 
 ### S3 (Frontend)
 
-| Control | Configuración |
-|---|---|
-| Acceso público | **BLOQUEADO** — Block All Public Access habilitado |
-| Distribución | Solo accesible vía CloudFront (OAC - Origin Access Control) |
-| Bucket Policy | Deny all excepto CloudFront distribution |
-| Versionado | Habilitado (rollback de deploys) |
-| Cifrado | SSE-S3 (encryption at rest por defecto) |
+| Control        | Configuración                                               |
+| -------------- | ----------------------------------------------------------- |
+| Acceso público | **BLOQUEADO** — Block All Public Access habilitado          |
+| Distribución   | Solo accesible vía CloudFront (OAC - Origin Access Control) |
+| Bucket Policy  | Deny all excepto CloudFront distribution                    |
+| Versionado     | Habilitado (rollback de deploys)                            |
+| Cifrado        | SSE-S3 (encryption at rest por defecto)                     |
 
 **Política IAM del bucket:**
+
 ```json
 {
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": { "Service": "cloudfront.amazonaws.com" },
-    "Action": "s3:GetObject",
-    "Resource": "arn:aws:s3:::erp-rockality-frontend/*",
-    "Condition": {
-      "StringEquals": {
-        "AWS:SourceArn": "arn:aws:cloudfront::ACCOUNT_ID:distribution/DIST_ID"
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "Service": "cloudfront.amazonaws.com" },
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::erp-rockality-frontend/*",
+      "Condition": {
+        "StringEquals": {
+          "AWS:SourceArn": "arn:aws:cloudfront::ACCOUNT_ID:distribution/DIST_ID"
+        }
       }
     }
-  }]
+  ]
 }
 ```
 
@@ -215,28 +218,29 @@
 
 ### CloudFront (CDN)
 
-| Control | Configuración |
-|---|---|
-| Protocolo | HTTPS only (redirect HTTP → HTTPS) |
-| TLS | TLSv1.2 mínimo |
+| Control              | Configuración                                                      |
+| -------------------- | ------------------------------------------------------------------ |
+| Protocolo            | HTTPS only (redirect HTTP → HTTPS)                                 |
+| TLS                  | TLSv1.2 mínimo                                                     |
 | Headers de seguridad | Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options |
-| Geo-restricción | Opcional: restringir a Colombia si aplica |
-| Origin Access | OAC (no OAI legacy) |
+| Geo-restricción      | Opcional: restringir a Colombia si aplica                          |
+| Origin Access        | OAC (no OAI legacy)                                                |
 
 ---
 
 ### API Gateway
 
-| Control | Configuración |
-|---|---|
-| Autorización | Cognito Authorizer en todas las rutas |
-| Throttling | 100 requests/segundo (burst: 50) — más que suficiente para 2 usuarios |
-| CORS | Origin restringido al dominio del frontend |
-| Validación | Request validation habilitada en el gateway |
-| Logging | CloudWatch access logs habilitados |
-| Stage | `prod` con variables de entorno |
+| Control      | Configuración                                                         |
+| ------------ | --------------------------------------------------------------------- |
+| Autorización | Cognito Authorizer en todas las rutas                                 |
+| Throttling   | 100 requests/segundo (burst: 50) — más que suficiente para 2 usuarios |
+| CORS         | Origin restringido al dominio del frontend                            |
+| Validación   | Request validation habilitada en el gateway                           |
+| Logging      | CloudWatch access logs habilitados                                    |
+| Stage        | `prod` con variables de entorno                                       |
 
 **Política de recursos:**
+
 ```json
 {
   "Effect": "Allow",
@@ -255,17 +259,18 @@
 
 ### Lambda (Backend)
 
-| Control | Configuración |
-|---|---|
-| Runtime | Node.js 20.x (LTS) |
-| Timeout | 30 segundos (más que suficiente para queries SQLite) |
-| Memoria | 256 MB |
-| VPC | Attached a VPC privada (acceso a EFS) |
-| Variables de entorno | Cifradas con KMS default |
-| Concurrencia | Reserved: 5 (previene billing explosivo) |
-| Layers | Dependencias en layer separado (mejor cold start) |
+| Control              | Configuración                                        |
+| -------------------- | ---------------------------------------------------- |
+| Runtime              | Node.js 20.x (LTS)                                   |
+| Timeout              | 30 segundos (más que suficiente para queries SQLite) |
+| Memoria              | 256 MB                                               |
+| VPC                  | Attached a VPC privada (acceso a EFS)                |
+| Variables de entorno | Cifradas con KMS default                             |
+| Concurrencia         | Reserved: 5 (previene billing explosivo)             |
+| Layers               | Dependencias en layer separado (mejor cold start)    |
 
 **IAM Role de la Lambda (principio de mínimo privilegio):**
+
 ```json
 {
   "Version": "2012-10-17",
@@ -273,10 +278,7 @@
     {
       "Sid": "EFSAccess",
       "Effect": "Allow",
-      "Action": [
-        "elasticfilesystem:ClientMount",
-        "elasticfilesystem:ClientWrite"
-      ],
+      "Action": ["elasticfilesystem:ClientMount", "elasticfilesystem:ClientWrite"],
       "Resource": "arn:aws:elasticfilesystem:REGION:ACCOUNT_ID:file-system/fs-XXXXX"
     },
     {
@@ -292,11 +294,7 @@
     {
       "Sid": "CloudWatchLogs",
       "Effect": "Allow",
-      "Action": [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents"
-      ],
+      "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
       "Resource": "arn:aws:logs:REGION:ACCOUNT_ID:*"
     }
   ]
@@ -304,6 +302,7 @@
 ```
 
 **Lo que NO tiene permiso:**
+
 - ❌ Acceso a otros servicios AWS
 - ❌ Lectura de secrets de otras aplicaciones
 - ❌ Acceso a S3 (no lo necesita)
@@ -314,22 +313,24 @@
 
 ### EFS (Base de datos SQLite)
 
-| Control | Configuración |
-|---|---|
-| Cifrado | At rest con KMS (aws/elasticfilesystem) |
-| Cifrado en tránsito | TLS habilitado |
-| Access Points | Un solo access point con UID/GID específico |
-| Security Group | Solo permite tráfico NFS (puerto 2049) desde SG de Lambda |
-| Backup | AWS Backup automático diario, retención 7 días |
-| Throughput | Bursting (suficiente para este volumen) |
+| Control             | Configuración                                             |
+| ------------------- | --------------------------------------------------------- |
+| Cifrado             | At rest con KMS (aws/elasticfilesystem)                   |
+| Cifrado en tránsito | TLS habilitado                                            |
+| Access Points       | Un solo access point con UID/GID específico               |
+| Security Group      | Solo permite tráfico NFS (puerto 2049) desde SG de Lambda |
+| Backup              | AWS Backup automático diario, retención 7 días            |
+| Throughput          | Bursting (suficiente para este volumen)                   |
 
 **Security Group EFS:**
+
 ```
 Inbound:  TCP 2049 desde sg-lambda-XXXXX
 Outbound: Ninguno necesario
 ```
 
 **Access Point:**
+
 ```
 Path:     /data
 UID:      1000
@@ -341,44 +342,73 @@ Permisos: 750 (owner: rwx, group: r-x, others: ---)
 
 ### Cognito (Autenticación)
 
-| Control | Configuración |
-|---|---|
-| MFA | Habilitado (TOTP — Google Authenticator) |
-| Password policy | Mínimo 12 caracteres, mayúsculas, números, símbolos |
-| Bloqueo | Bloqueo temporal tras 5 intentos fallidos |
-| Tokens | Access token expira en 1 hora, Refresh token en 30 días |
-| Grupos | `admin` (operaciones CRUD), `gerente` (solo lectura) |
-| Capacidad | Diseñado para 2-10 usuarios (50K MAUs free tier) |
-| Self-signup | **DESHABILITADO** — solo el admin crea usuarios |
-| Recovery | Solo por email verificado |
+| Control         | Configuración                                           |
+| --------------- | ------------------------------------------------------- |
+| MFA             | Habilitado (TOTP — Google Authenticator)                |
+| Password policy | Mínimo 12 caracteres, mayúsculas, números, símbolos     |
+| Bloqueo         | Bloqueo temporal tras 5 intentos fallidos               |
+| Tokens          | Access token expira en 1 hora, Refresh token en 30 días |
+| Grupos          | `admin` (operaciones CRUD), `gerente` (solo lectura)    |
+| Capacidad       | Diseñado para 2-10 usuarios (50K MAUs free tier)        |
+| Self-signup     | **DESHABILITADO** — solo el admin crea usuarios         |
+| Recovery        | Solo por email verificado                               |
 
 **Permisos por rol:**
 
-| Recurso | Admin | Gerente |
-|---|---|---|
-| Ventas | CRUD | Read |
-| Productos | CRUD | Read |
-| Gastos | CRUD | Read |
-| Clientes | CRUD | Read |
-| Reportes | Read | Read |
-| Dashboard | Read | Read |
-| Usuarios | — | — |
+| Recurso   | Admin | Gerente |
+| --------- | ----- | ------- |
+| Ventas    | CRUD  | Read    |
+| Productos | CRUD  | Read    |
+| Gastos    | CRUD  | Read    |
+| Clientes  | CRUD  | Read    |
+| Reportes  | Read  | Read    |
+| Dashboard | Read  | Read    |
+| Usuarios  | —     | —       |
 
 ---
 
 ### VPC y Networking
 
-| Control | Configuración |
-|---|---|
-| VPC | Dedicada para el proyecto |
-| Subnets | 2 privadas (para Lambda + EFS), en 2 AZs |
+| Control          | Configuración                            |
+| ---------------- | ---------------------------------------- |
+| VPC              | Dedicada para el proyecto                |
+| Subnets          | 2 privadas (para Lambda + EFS), en 2 AZs |
 | Internet Gateway | NO — Lambda no necesita salir a internet |
-| NAT Gateway | NO — ahorro de costos, no se necesita |
-| Security Groups | SG-Lambda → SG-EFS (solo puerto 2049) |
-| NACLs | Default (permisivo dentro de VPC) |
-| Flow Logs | Habilitados para auditoría |
+| NAT Gateway      | NO — ahorro de costos, no se necesita    |
+| Security Groups  | SG-Lambda → SG-EFS (solo puerto 2049)    |
+| NACLs            | Default (permisivo dentro de VPC)        |
+| Flow Logs        | Habilitados para auditoría               |
 
 > **Nota:** Al estar Lambda en VPC sin internet, Cognito se valida via JWT offline (la Lambda verifica el token localmente sin llamar a Cognito).
+
+---
+
+### Cifrado de datos sensibles (PII de clientes)
+
+Defensa en capas para proteger cédula, teléfono y email de los clientes ante robo o descarga de la base de datos.
+
+| Capa                          | Qué protege                                                       | Estado                                 |
+| ----------------------------- | ----------------------------------------------------------------- | -------------------------------------- |
+| **Cifrado de columna**        | teléfono y email cifrados con AES-256-GCM (clave fuera de la BD)  | ✅ Implementado (backend)              |
+| **Búsqueda sin exponer**      | `telefono_hash` (HMAC-SHA256) permite buscar por teléfono exacto  | ✅ Implementado                        |
+| **Enmascarado de cédula**     | la cédula se muestra parcial en la UI (`80****54`)                | ✅ Implementado (frontend)             |
+| **Cifrado en reposo (disco)** | el archivo de BD completo cifrado — protege ante robo del archivo | ⏳ Fase AWS (EFS con KMS, ya previsto) |
+| **Clave de cifrado**          | `ENCRYPTION_KEY` fuera del código y de la BD                      | ⏳ Dev: `.env` · Prod: AWS Secrets Mgr |
+
+**Detalle de implementación (fase local, ya hecha):**
+
+- Utilidad `backend/src/utils/crypto.ts`: `encrypt`/`decrypt` (AES-256-GCM, IV aleatorio por valor + authTag) y `hmac` (búsqueda determinista).
+- Formato almacenado: `enc:v1:<iv>:<authTag>:<ciphertext>`. El prefijo permite distinguir texto plano heredado y versionar el esquema.
+- El cifrado/descifrado vive en `clientes.repository.ts` (cifra al escribir, descifra al leer). Ninguna otra capa maneja estos campos en claro.
+- La clave se lee de `ENCRYPTION_KEY` (variable de entorno). En dev hay una clave por defecto; en producción es **obligatoria** (fail-fast si falta).
+
+**Qué falta para producción (fase AWS):**
+
+1. **`ENCRYPTION_KEY` en AWS Secrets Manager** (no en `.env` ni en variables de Lambda en texto plano). La Lambda la lee al arrancar.
+2. **Cifrado en reposo del `.db`**: EFS ya está previsto con cifrado KMS (ver sección EFS). Esto protege el archivo completo si alguien accede al almacenamiento.
+3. **Rotación de clave**: documentar el procedimiento de re-cifrado si se rota `ENCRYPTION_KEY` (leer con clave vieja → re-cifrar con nueva). El prefijo `v1` facilita versionar.
+
+> **Importante:** el cifrado de columna protege ante lectura directa de la tabla (dump, SELECT). El cifrado en reposo del disco protege ante robo del archivo físico. Son complementarios: producción debe tener ambos.
 
 ---
 
@@ -407,6 +437,7 @@ erp-rockality/
 ```
 
 **Validación de seguridad:**
+
 - `.env` y archivos de credenciales en `.gitignore`
 - No se comiten secrets — se usan GitHub Secrets + AWS Parameter Store
 - Branch protection en `main`: requiere PR + approval
@@ -415,15 +446,16 @@ erp-rockality/
 
 ### 1.2 Repositorio Git
 
-| Decisión | Valor |
-|---|---|
-| Proveedor | GitHub |
-| Branch strategy | `main` (producción) + `develop` (desarrollo) |
-| Commits | Conventional Commits (`feat:`, `fix:`, `chore:`) |
-| Branch protection | Requiere 1 approval, status checks pass |
-| Secrets | GitHub Secrets para AWS credentials del CI/CD |
+| Decisión          | Valor                                            |
+| ----------------- | ------------------------------------------------ |
+| Proveedor         | GitHub                                           |
+| Branch strategy   | `main` (producción) + `develop` (desarrollo)     |
+| Commits           | Conventional Commits (`feat:`, `fix:`, `chore:`) |
+| Branch protection | Requiere 1 approval, status checks pass          |
+| Secrets           | GitHub Secrets para AWS credentials del CI/CD    |
 
 **GitHub Secrets necesarios:**
+
 ```
 AWS_ACCESS_KEY_ID          # IAM user de deploy (solo permisos de deploy)
 AWS_SECRET_ACCESS_KEY
@@ -431,27 +463,18 @@ AWS_REGION
 ```
 
 **IAM User para CI/CD (mínimo privilegio):**
+
 ```json
 {
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": [
-        "s3:PutObject",
-        "s3:DeleteObject",
-        "s3:ListBucket"
-      ],
-      "Resource": [
-        "arn:aws:s3:::erp-rockality-frontend",
-        "arn:aws:s3:::erp-rockality-frontend/*"
-      ]
+      "Action": ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::erp-rockality-frontend", "arn:aws:s3:::erp-rockality-frontend/*"]
     },
     {
       "Effect": "Allow",
-      "Action": [
-        "lambda:UpdateFunctionCode",
-        "lambda:UpdateFunctionConfiguration"
-      ],
+      "Action": ["lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration"],
       "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:erp-rockality-*"
     },
     {
@@ -472,12 +495,12 @@ AWS_REGION
 
 ### 1.3 Linters y Formatters
 
-| Herramienta | Ámbito | Propósito |
-|---|---|---|
-| ESLint | Front + Back | Calidad de código, detección de errores |
-| Prettier | Front + Back | Formato consistente |
-| TypeScript strict | Front + Back | Type safety |
-| Husky + lint-staged | Pre-commit | Lint automático antes de cada commit |
+| Herramienta         | Ámbito       | Propósito                               |
+| ------------------- | ------------ | --------------------------------------- |
+| ESLint              | Front + Back | Calidad de código, detección de errores |
+| Prettier            | Front + Back | Formato consistente                     |
+| TypeScript strict   | Front + Back | Type safety                             |
+| Husky + lint-staged | Pre-commit   | Lint automático antes de cada commit    |
 
 ---
 
@@ -486,13 +509,14 @@ AWS_REGION
 ```yaml
 # Triggers: PR a main y develop
 jobs:
-  lint:     # ESLint + Prettier check
-  test:     # Unit tests
-  build:    # Compilar TypeScript, build frontend
+  lint: # ESLint + Prettier check
+  test: # Unit tests
+  build: # Compilar TypeScript, build frontend
   security: # npm audit (vulnerabilidades en dependencias)
 ```
 
 **Validación de seguridad en CI:**
+
 - `npm audit` para detectar dependencias vulnerables
 - No se exponen secrets en logs
 - Runners de GitHub (no self-hosted) para evitar surface attack
@@ -519,30 +543,31 @@ jobs:
 
 **Recursos definidos en `template.yaml`:**
 
-| Recurso | Tipo SAM/CloudFormation |
-|---|---|
-| Lambda | AWS::Serverless::Function |
-| API Gateway | AWS::Serverless::Api |
-| S3 Frontend | AWS::S3::Bucket |
-| CloudFront | AWS::CloudFront::Distribution |
-| EFS | AWS::EFS::FileSystem |
-| EFS Access Point | AWS::EFS::AccessPoint |
-| VPC + Subnets | AWS::EC2::VPC, AWS::EC2::Subnet |
-| Security Groups | AWS::EC2::SecurityGroup |
-| Cognito User Pool | AWS::Cognito::UserPool |
-| Cognito Groups | AWS::Cognito::UserPoolGroup |
-| Backup Plan | AWS::Backup::BackupPlan |
+| Recurso           | Tipo SAM/CloudFormation         |
+| ----------------- | ------------------------------- |
+| Lambda            | AWS::Serverless::Function       |
+| API Gateway       | AWS::Serverless::Api            |
+| S3 Frontend       | AWS::S3::Bucket                 |
+| CloudFront        | AWS::CloudFront::Distribution   |
+| EFS               | AWS::EFS::FileSystem            |
+| EFS Access Point  | AWS::EFS::AccessPoint           |
+| VPC + Subnets     | AWS::EC2::VPC, AWS::EC2::Subnet |
+| Security Groups   | AWS::EC2::SecurityGroup         |
+| Cognito User Pool | AWS::Cognito::UserPool          |
+| Cognito Groups    | AWS::Cognito::UserPoolGroup     |
+| Backup Plan       | AWS::Backup::BackupPlan         |
 
 ---
 
 ### 1.7 Ambientes
 
-| Ambiente | Uso | Base de datos |
-|---|---|---|
+| Ambiente    | Uso        | Base de datos                   |
+| ----------- | ---------- | ------------------------------- |
 | Local (dev) | Desarrollo | SQLite local en `./data/dev.db` |
-| Prod (AWS) | Producción | SQLite en EFS |
+| Prod (AWS)  | Producción | SQLite en EFS                   |
 
 **Variables de entorno:**
+
 ```
 NODE_ENV=production|development
 DB_PATH=/mnt/data/erp.db  (prod) | ./data/dev.db (local)
@@ -565,6 +590,7 @@ ALLOWED_ORIGINS=https://erp.rockality.com
 ### 2.2 Base de datos + Migraciones
 
 **Sistema de migraciones versionado:**
+
 ```
 backend/src/db/migrations/
 ├── 001_initial_schema.sql
@@ -573,6 +599,7 @@ backend/src/db/migrations/
 ```
 
 **Validación de seguridad en DB:**
+
 - Queries parametrizadas (prevenir SQL injection)
 - Validación de input con Zod (schemas estrictos)
 - No se almacenan passwords (auth es Cognito)
@@ -589,6 +616,7 @@ backend/src/db/migrations/
 ```
 
 **Matriz de autorización en el backend:**
+
 ```typescript
 // POST/PUT/DELETE en /ventas, /productos, /gastos, /clientes → solo admin
 // GET en cualquier ruta → admin + gerente
@@ -598,6 +626,7 @@ backend/src/db/migrations/
 ### 2.4 - 2.8 Módulos CRUD
 
 Cada módulo sigue el patrón:
+
 1. **Validación de input** (Zod schema)
 2. **Autorización** (middleware de rol)
 3. **Lógica de negocio** (service layer)
@@ -631,14 +660,14 @@ Cada módulo sigue el patrón:
 
 ### 3.2 Seguridad en Frontend
 
-| Control | Implementación |
-|---|---|
-| XSS | React escapa por defecto, no usar `dangerouslySetInnerHTML` |
-| CSRF | No aplica (API stateless con JWT) |
-| Auth tokens | Almacenados en memoria (no localStorage) |
-| Refresh | Cognito SDK maneja refresh transparente |
-| Rutas protegidas | HOC que verifica token válido + rol |
-| Timeout sesión | Logout automático tras 30 min inactividad |
+| Control          | Implementación                                              |
+| ---------------- | ----------------------------------------------------------- |
+| XSS              | React escapa por defecto, no usar `dangerouslySetInnerHTML` |
+| CSRF             | No aplica (API stateless con JWT)                           |
+| Auth tokens      | Almacenados en memoria (no localStorage)                    |
+| Refresh          | Cognito SDK maneja refresh transparente                     |
+| Rutas protegidas | HOC que verifica token válido + rol                         |
+| Timeout sesión   | Logout automático tras 30 min inactividad                   |
 
 ### 3.3 - 3.9 Módulos UI
 
@@ -671,38 +700,38 @@ AWS Budgets:
 
 ### 4.3 Monitoreo
 
-| Qué | Cómo |
-|---|---|
-| Errores Lambda | CloudWatch Logs + Metric filter para ERROR |
-| Latencia API | API Gateway métricas default |
-| Costos | AWS Budgets con alerta |
+| Qué            | Cómo                                          |
+| -------------- | --------------------------------------------- |
+| Errores Lambda | CloudWatch Logs + Metric filter para ERROR    |
+| Latencia API   | API Gateway métricas default                  |
+| Costos         | AWS Budgets con alerta                        |
 | Disponibilidad | CloudWatch Synthetics (opcional, tiene costo) |
 
 ### 4.4 Plan de Backup y Recuperación
 
-| Componente | Backup | RPO | RTO |
-|---|---|---|---|
-| SQLite (EFS) | AWS Backup diario | 24h | 1h |
-| Frontend (S3) | Versionado de bucket | Inmediato | 5 min (rollback) |
+| Componente       | Backup                | RPO       | RTO              |
+| ---------------- | --------------------- | --------- | ---------------- |
+| SQLite (EFS)     | AWS Backup diario     | 24h       | 1h               |
+| Frontend (S3)    | Versionado de bucket  | Inmediato | 5 min (rollback) |
 | Backend (código) | Git + Lambda versions | Inmediato | 5 min (rollback) |
-| Cognito | No requiere (managed) | — | — |
+| Cognito          | No requiere (managed) | —         | —                |
 
 ---
 
 ## Estimación de Costos Detallada
 
-| Servicio | Uso estimado | Costo/mes |
-|---|---|---|
-| Lambda | ~12,000-15,000 invocaciones/mes, 256MB, 30s max | $0.00 (free tier 1M) |
-| API Gateway | ~12,000-15,000 requests/mes | $0.00 (free tier 1M) |
-| S3 | ~50MB frontend estático | $0.01 |
-| CloudFront | ~1GB transferencia | $0.09 |
-| EFS | ~100MB almacenamiento | $0.03 |
-| Cognito | 2-10 usuarios | $0.00 (free tier 50K MAU) |
-| CloudWatch | Logs básicos | $0.00 (free tier 5GB) |
-| AWS Backup | ~100MB diarios | $0.05 |
-| VPC | Sin NAT, sin EIP | $0.00 |
-| **TOTAL** | | **~$0.18/mes** |
+| Servicio    | Uso estimado                                    | Costo/mes                 |
+| ----------- | ----------------------------------------------- | ------------------------- |
+| Lambda      | ~12,000-15,000 invocaciones/mes, 256MB, 30s max | $0.00 (free tier 1M)      |
+| API Gateway | ~12,000-15,000 requests/mes                     | $0.00 (free tier 1M)      |
+| S3          | ~50MB frontend estático                         | $0.01                     |
+| CloudFront  | ~1GB transferencia                              | $0.09                     |
+| EFS         | ~100MB almacenamiento                           | $0.03                     |
+| Cognito     | 2-10 usuarios                                   | $0.00 (free tier 50K MAU) |
+| CloudWatch  | Logs básicos                                    | $0.00 (free tier 5GB)     |
+| AWS Backup  | ~100MB diarios                                  | $0.05                     |
+| VPC         | Sin NAT, sin EIP                                | $0.00                     |
+| **TOTAL**   |                                                 | **~$0.18/mes**            |
 
 > **Nota:** El costo real será menor a $1/mes. El presupuesto de $15 da margen enorme para crecimiento futuro.
 
@@ -710,17 +739,17 @@ AWS Budgets:
 
 ## Riesgos y Mitigaciones
 
-| Riesgo | Probabilidad | Impacto | Mitigación |
-|---|---|---|---|
-| Cold start Lambda en VPC | Media | Bajo (2-3s primera carga) | Provisioned concurrency si molesta ($$$) o usar SnapStart |
-| SQLite concurrencia | Baja (2 usuarios) | Bajo | WAL mode habilitado, reintentos automáticos |
-| Pérdida de datos EFS | Muy baja | Alto | Backup diario + versionado |
-| Token JWT expirado | Normal | Bajo | Refresh automático con Cognito SDK |
-| Exceder presupuesto | Muy baja | Bajo | Budget alarm + throttling en API Gateway |
-| Dependencia vulnerable | Media | Medio | npm audit en CI + Dependabot |
-| Free tier API Gateway expira (12 meses) | Segura | Bajo | Post free-tier: ~$0.05/mes con 15K req. Presupuesto lo absorbe |
-| Lambda necesita internet a futuro | Media | Medio | Agregar NAT Gateway (~$32/mes) o migrar a Lambda sin VPC + DynamoDB. Alternativa: usar VPC Endpoints para servicios específicos (SES, S3) a $0.01/hora (~$7/mes) |
-| Pérdida de auditoría de negocio | Media | Alto | Tabla de audit_log en SQLite (ver sección Auditoría) |
+| Riesgo                                  | Probabilidad      | Impacto                   | Mitigación                                                                                                                                                       |
+| --------------------------------------- | ----------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cold start Lambda en VPC                | Media             | Bajo (2-3s primera carga) | Provisioned concurrency si molesta ($$$) o usar SnapStart                                                                                                        |
+| SQLite concurrencia                     | Baja (2 usuarios) | Bajo                      | WAL mode habilitado, reintentos automáticos                                                                                                                      |
+| Pérdida de datos EFS                    | Muy baja          | Alto                      | Backup diario + versionado                                                                                                                                       |
+| Token JWT expirado                      | Normal            | Bajo                      | Refresh automático con Cognito SDK                                                                                                                               |
+| Exceder presupuesto                     | Muy baja          | Bajo                      | Budget alarm + throttling en API Gateway                                                                                                                         |
+| Dependencia vulnerable                  | Media             | Medio                     | npm audit en CI + Dependabot                                                                                                                                     |
+| Free tier API Gateway expira (12 meses) | Segura            | Bajo                      | Post free-tier: ~$0.05/mes con 15K req. Presupuesto lo absorbe                                                                                                   |
+| Lambda necesita internet a futuro       | Media             | Medio                     | Agregar NAT Gateway (~$32/mes) o migrar a Lambda sin VPC + DynamoDB. Alternativa: usar VPC Endpoints para servicios específicos (SES, S3) a $0.01/hora (~$7/mes) |
+| Pérdida de auditoría de negocio         | Media             | Alto                      | Tabla de audit_log en SQLite (ver sección Auditoría)                                                                                                             |
 
 ---
 
@@ -743,6 +772,7 @@ AUDIT_LOG
 ```
 
 **Casos de uso:**
+
 - Quién anuló una venta y por qué
 - Quién cambió el precio de un producto
 - Historial de cambios en datos de un cliente
@@ -754,17 +784,18 @@ AUDIT_LOG
 
 ## Moneda, Impuestos y Formato Regional
 
-| Aspecto | Configuración |
-|---|---|
-| Moneda | COP (Peso Colombiano) |
-| Formato numérico | Separador de miles: punto (1.000.000), decimal: coma (1.500,50) |
-| IVA | 19% estándar en Colombia |
-| IVA en suplementos | 19% (suplementos deportivos están gravados) |
-| IVA en servicios (planes) | Depende del régimen del gimnasio — consultar contador |
-| Zona horaria | America/Bogota (UTC-5) |
-| Formato de fecha | DD/MM/YYYY (estándar Colombia) |
+| Aspecto                   | Configuración                                                   |
+| ------------------------- | --------------------------------------------------------------- |
+| Moneda                    | COP (Peso Colombiano)                                           |
+| Formato numérico          | Separador de miles: punto (1.000.000), decimal: coma (1.500,50) |
+| IVA                       | 19% estándar en Colombia                                        |
+| IVA en suplementos        | 19% (suplementos deportivos están gravados)                     |
+| IVA en servicios (planes) | Depende del régimen del gimnasio — consultar contador           |
+| Zona horaria              | America/Bogota (UTC-5)                                          |
+| Formato de fecha          | DD/MM/YYYY (estándar Colombia)                                  |
 
 **Implementación:**
+
 - Todos los montos se almacenan en centavos (integer) para evitar errores de punto flotante
 - El IVA se calcula y almacena por separado en cada venta
 - El frontend formatea según locale `es-CO`
@@ -818,6 +849,7 @@ PRODUCTOS
 8. **Backup** pre-migración del SQLite vacío (por si toca repetir)
 
 **Consideraciones:**
+
 - La migración se ejecuta UNA vez antes del go-live
 - Los registros históricos se importan con `tipo = 'historico'` para diferenciarlos
 - No se intenta reconstruir inventario histórico (solo ventas)
@@ -831,17 +863,18 @@ PRODUCTOS
 
 Al almacenar datos personales de clientes (nombre, teléfono, email), el gimnasio tiene obligaciones:
 
-| Obligación | Implementación en el ERP |
-|---|---|
-| Consentimiento | Checkbox en registro de cliente: "Autorizo el tratamiento de mis datos" |
-| Finalidad | Texto claro: datos usados para gestión comercial y comunicaciones del gimnasio |
-| Derecho de acceso | El cliente puede solicitar qué datos se tienen de él |
-| Derecho de rectificación | El admin puede editar datos del cliente |
-| Derecho de supresión | Funcionalidad de "anonimizar" cliente (no eliminar, para mantener integridad de ventas históricas) |
-| Política de privacidad | Documento simple publicado en el gimnasio |
-| Responsable | El gerente como responsable del tratamiento |
+| Obligación               | Implementación en el ERP                                                                           |
+| ------------------------ | -------------------------------------------------------------------------------------------------- |
+| Consentimiento           | Checkbox en registro de cliente: "Autorizo el tratamiento de mis datos"                            |
+| Finalidad                | Texto claro: datos usados para gestión comercial y comunicaciones del gimnasio                     |
+| Derecho de acceso        | El cliente puede solicitar qué datos se tienen de él                                               |
+| Derecho de rectificación | El admin puede editar datos del cliente                                                            |
+| Derecho de supresión     | Funcionalidad de "anonimizar" cliente (no eliminar, para mantener integridad de ventas históricas) |
+| Política de privacidad   | Documento simple publicado en el gimnasio                                                          |
+| Responsable              | El gerente como responsable del tratamiento                                                        |
 
 **Implementación técnica:**
+
 - Campo `consentimiento_datos` (boolean + fecha) en tabla CLIENTES
 - Funcionalidad "anonimizar cliente": reemplaza nombre/teléfono/email con datos genéricos, mantiene historial de ventas intacto
 - No se almacenan datos sensibles (salud, biométricos, etc.)
@@ -852,16 +885,16 @@ Al almacenar datos personales de clientes (nombre, teléfono, email), el gimnasi
 
 ## Consideraciones de Costo Post Free-Tier (después de 12 meses)
 
-| Servicio | Free tier permanente | Free tier 12 meses | Costo post free-tier |
-|---|---|---|---|
-| Lambda | ✅ 1M requests/mes | — | $0.00 |
-| API Gateway | ❌ | ✅ 1M requests/mes | ~$0.05/mes (15K req × $3.50/M) |
-| S3 | ❌ | ✅ 5GB | ~$0.01/mes (50MB) |
-| CloudFront | ❌ | ✅ 1TB/mes | ~$0.09/mes (1GB) |
-| EFS | ❌ | — (no tiene free tier temporal) | ~$0.03/mes |
-| Cognito | ✅ 50K MAU | — | $0.00 |
-| CloudWatch | ✅ 5GB logs | — | $0.00 |
-| **TOTAL post free-tier** | | | **~$0.50-1.00/mes** |
+| Servicio                 | Free tier permanente | Free tier 12 meses              | Costo post free-tier           |
+| ------------------------ | -------------------- | ------------------------------- | ------------------------------ |
+| Lambda                   | ✅ 1M requests/mes   | —                               | $0.00                          |
+| API Gateway              | ❌                   | ✅ 1M requests/mes              | ~$0.05/mes (15K req × $3.50/M) |
+| S3                       | ❌                   | ✅ 5GB                          | ~$0.01/mes (50MB)              |
+| CloudFront               | ❌                   | ✅ 1TB/mes                      | ~$0.09/mes (1GB)               |
+| EFS                      | ❌                   | — (no tiene free tier temporal) | ~$0.03/mes                     |
+| Cognito                  | ✅ 50K MAU           | —                               | $0.00                          |
+| CloudWatch               | ✅ 5GB logs          | —                               | $0.00                          |
+| **TOTAL post free-tier** |                      |                                 | **~$0.50-1.00/mes**            |
 
 > **Conclusión:** Incluso después de que expire el free tier de 12 meses, el costo real se mantiene bajo $1/mes. El presupuesto de $15 sigue siendo más que suficiente.
 
@@ -870,6 +903,7 @@ Al almacenar datos personales de clientes (nombre, teléfono, email), el gimnasi
 ## Ruta de Escape: Si Lambda Necesita Internet
 
 Escenarios futuros que requerirían internet desde Lambda:
+
 - Enviar emails (AWS SES)
 - Integrar pasarela de pagos
 - Webhooks a servicios externos
@@ -877,12 +911,12 @@ Escenarios futuros que requerirían internet desde Lambda:
 
 **Opciones (de menor a mayor costo):**
 
-| Opción | Costo adicional | Complejidad |
-|---|---|---|
-| VPC Endpoints específicos (SES, SNS) | ~$7/mes por endpoint | Baja |
-| Sacar Lambda de la VPC + usar DynamoDB | $0 adicional | Media (requiere rediseño de DB) |
-| Agregar NAT Gateway | ~$32/mes | Baja (pero rompe presupuesto) |
-| Lambda@Edge sin VPC para funciones con internet | $0 | Media |
+| Opción                                          | Costo adicional      | Complejidad                     |
+| ----------------------------------------------- | -------------------- | ------------------------------- |
+| VPC Endpoints específicos (SES, SNS)            | ~$7/mes por endpoint | Baja                            |
+| Sacar Lambda de la VPC + usar DynamoDB          | $0 adicional         | Media (requiere rediseño de DB) |
+| Agregar NAT Gateway                             | ~$32/mes             | Baja (pero rompe presupuesto)   |
+| Lambda@Edge sin VPC para funciones con internet | $0                   | Media                           |
 
 **Recomendación:** Si llega ese momento, la opción 1 (VPC Endpoints) es la más limpia. O la opción 2 si el volumen justifica migrar a DynamoDB.
 
@@ -890,13 +924,13 @@ Escenarios futuros que requerirían internet desde Lambda:
 
 ## Decisiones Confirmadas
 
-| # | Decisión | Respuesta | Impacto |
-|---|---|---|---|
-| 1 | Proveedor Git | **GitHub** | CI/CD con GitHub Actions, secrets seguros |
-| 2 | Dominio | **CloudFront genérico** (por ahora) | Ahorra ~$12/año, se puede agregar después |
-| 3 | Planes de entrenamiento | **3 planes con múltiples duraciones + modalidad virtual** | Requiere modelo de suscripciones flexible |
-| 4 | Región AWS | **us-east-1** | Menores costos, latencia aceptable (~100ms) |
-| 5 | Usuarios futuros | **Máximo 10** (2 actualmente) | Cognito free tier cubre de sobra |
+| #   | Decisión                | Respuesta                                                 | Impacto                                     |
+| --- | ----------------------- | --------------------------------------------------------- | ------------------------------------------- |
+| 1   | Proveedor Git           | **GitHub**                                                | CI/CD con GitHub Actions, secrets seguros   |
+| 2   | Dominio                 | **CloudFront genérico** (por ahora)                       | Ahorra ~$12/año, se puede agregar después   |
+| 3   | Planes de entrenamiento | **3 planes con múltiples duraciones + modalidad virtual** | Requiere modelo de suscripciones flexible   |
+| 4   | Región AWS              | **us-east-1**                                             | Menores costos, latencia aceptable (~100ms) |
+| 5   | Usuarios futuros        | **Máximo 10** (2 actualmente)                             | Cognito free tier cubre de sobra            |
 
 ---
 
@@ -965,6 +999,6 @@ DETALLE_VENTA
 
 ---
 
-*Documento creado: Agosto 2026*
-*Última actualización: Agosto 2026*
-*Próxima revisión: Antes de iniciar Fase 2*
+_Documento creado: Agosto 2026_
+_Última actualización: Agosto 2026_
+_Próxima revisión: Antes de iniciar Fase 2_

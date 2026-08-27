@@ -1,0 +1,54 @@
+@import 'tailwindcss';
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-800;
+  }
+}
+
+/* Design system utilities — flat, card-based UI (replaces the old gray neumorphism). */
+@layer utilities {
+  .neu-flat {
+    background-color: #fff;
+    border: 1px solid rgb(226 232 240); /* slate-200 */
+    box-shadow:
+      0 1px 2px 0 rgb(15 23 42 / 0.04),
+      0 1px 3px 0 rgb(15 23 42 / 0.03);
+  }
+
+  .neu-pressed {
+    background-color: #fff;
+    border: 1px solid rgb(226 232 240);
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .neu-pressed:focus {
+    outline: none;
+    border-color: rgb(99 102 241); /* indigo-500 */
+    box-shadow: 0 0 0 3px rgb(99 102 241 / 0.15);
+  }
+
+  /* !important pins the primary-button look regardless of leftover text/bg utility
+     classes still present on <button> elements across pages. */
+  .neu-btn {
+    background-color: rgb(79 70 229) !important; /* indigo-600 */
+    color: #fff !important;
+    border: 1px solid rgb(79 70 229);
+    box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.08);
+    transition:
+      background-color 0.15s ease,
+      box-shadow 0.15s ease,
+      transform 0.05s ease;
+  }
+  .neu-btn:hover {
+    background-color: rgb(67 56 202) !important; /* indigo-700 */
+  }
+  .neu-btn:active {
+    transform: translateY(1px);
+  }
+  .neu-btn:disabled {
+    background-color: rgb(199 210 254) !important; /* indigo-200 */
+    cursor: not-allowed;
+  }
+}
