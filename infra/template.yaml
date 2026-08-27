@@ -310,6 +310,17 @@ Resources:
             Method: GET
             Auth:
               Authorizer: NONE # health check público
+        # Preflight CORS (OPTIONS): PÚBLICO, sin authorizer. El navegador envía
+        # el preflight sin token, así que no debe exigir JWT. Express (cors)
+        # responde 204 con los headers CORS.
+        OptionsProxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /{proxy+}
+            Method: OPTIONS
+            Auth:
+              Authorizer: NONE
         ApiProxy:
           Type: HttpApi
           Properties:
