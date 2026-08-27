@@ -311,8 +311,10 @@ export default function Clientes() {
       notas_salud: form.notas_salud || undefined,
       instagram: form.instagram || undefined,
       linkedin: form.linkedin || undefined,
-      referido_por: esReferido ? form.referido_por || undefined : undefined,
-      referido_por_nombre: esReferido ? form.referido_por_nombre || undefined : undefined,
+      // Enviamos siempre el valor (string vacío = borrar). Si el canal no es
+      // "Referido", limpiamos ambos campos.
+      referido_por: esReferido ? form.referido_por : '',
+      referido_por_nombre: esReferido ? form.referido_por_nombre : '',
       consentimiento_datos: form.consentimiento_datos,
     };
 

@@ -195,6 +195,15 @@ export function update(cedula: string, data: UpdateClienteData): ClienteConRelac
   const telefonoFinal = data.telefono ?? current.telefono;
   const emailFinal = data.email ?? current.email;
 
+  // Referido: undefined = no tocar; string vacío = borrar (NULL). Así se puede
+  // quitar un referido, no solo cambiarlo.
+  const referidoPorFinal =
+    data.referido_por === undefined ? current.referido_por : data.referido_por || null;
+  const referidoPorNombreFinal =
+    data.referido_por_nombre === undefined
+      ? current.referido_por_nombre
+      : data.referido_por_nombre || null;
+
   db.prepare(
     `UPDATE clientes SET
        nombre = ?, apellidos = ?, telefono = ?, telefono_hash = ?, email = ?,
@@ -220,8 +229,8 @@ export function update(cedula: string, data: UpdateClienteData): ClienteConRelac
     data.notas_salud ?? current.notas_salud,
     data.instagram ?? current.instagram,
     data.linkedin ?? current.linkedin,
-    data.referido_por ?? current.referido_por,
-    data.referido_por_nombre ?? current.referido_por_nombre,
+    referidoPorFinal,
+    referidoPorNombreFinal,
     data.updated_by || null,
     cedula,
   );
