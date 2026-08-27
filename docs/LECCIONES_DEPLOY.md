@@ -113,6 +113,23 @@ authorizer) -> Lambda (Express, arm64, en VPC privada sin internet) -> EFS (SQLi
 - **Solución**: desplegar con `sam deploy -t .aws-sam/build/template.yaml` (el template
   que produce `sam build`). Verificar `CodeSize` de la Lambda tras el deploy (debe reflejar deps).
 
+### 12. OIDC de GitHub Actions: "Not authorized to perform sts:AssumeRoleWithWebIdentity"
+
+- **Síntoma**: el workflow de CD fallaba al asumir el rol vía OIDC, aun con provider,
+  principal y audiencia correctos.
+- **Causas encontradas** (dos, encadenadas):
+  1. El repo tenía `default_workflow_permissions: read`, lo que impedía emitir el
+     `id-token` aunque el workflow pidiera `id-token: write`. Se cambió a `write`.
+  2. La condición del trust con `sub: repo/...:*` (comodín amplio) es **rechazada
+     por AWS** como "no scoped". El `sub` debe ser específico
+     (`...:ref:refs/heads/main`) o usar `job_workflow_ref`.
+- **Decisión**: tras varios intentos, para no bloquear el pipeline se optó por un
+  **usuario IAM de deploy con access keys** (guardadas en GitHub Secrets), que es
+  simple y confiable. OIDC queda como mejora futura (más seguro, sin llaves).
+- **Recomendación oil & gas**: si se usa OIDC, (a) poner `default_workflow_permissions`
+  en `write` (o habilitar que los workflows pidan permisos), y (b) usar un `sub`
+  específico por rama, nunca comodín amplio.
+
 ### (operativo) Docker Desktop se pausa durante los builds
 
 - **Síntoma**: `sam build --use-container` falla intermitentemente con "requires a

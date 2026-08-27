@@ -123,29 +123,31 @@ hace falta correr `sam deploy` ni subir el frontend a mano.
 
 - **Workflow**: `.github/workflows/cd.yml` (se dispara en push a `main`; también
   manual desde la pestaña Actions con "Run workflow").
-- **Autenticación**: **OIDC** — GitHub asume un rol IAM temporal, sin llaves
-  permanentes guardadas.
-  - OIDC provider + rol IAM: definidos en `infra/cicd.yaml` (stack `rockality-cicd`).
-  - Rol: `rockality-github-deploy`. Su ARN está en el GitHub Secret `AWS_DEPLOY_ROLE_ARN`.
-  - La confianza está restringida a `repo:naxus1/erp-rockality:ref:refs/heads/main`
-    (solo la rama main puede desplegar).
+- **Autenticación**: usuario IAM de deploy (`rockality-github-deploy`, stack
+  `rockality-cicd`) con access keys guardadas en los GitHub Secrets
+  `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY`.
+  - (Se intentó OIDC primero, pero la cuenta rechazaba el AssumeRole; ver
+    LECCIONES_DEPLOY.md #12. OIDC queda como mejora futura.)
+  - Rotar las llaves periódicamente: `aws iam create-access-key --user-name
+rockality-github-deploy`, actualizar los secrets, y borrar la llave vieja.
 - **Qué hace el pipeline**: build backend -> `sam build --use-container` ->
   `sam deploy` -> build frontend -> `s3 sync` -> invalidación CloudFront ->
   health check.
 
-Recrear/actualizar el stack de CI/CD (si se cambia el repo, rama o permisos):
+Recrear/actualizar el stack de CI/CD (usuario IAM de deploy):
 
 ```bash
 aws cloudformation deploy --template-file infra/cicd.yaml \
   --stack-name rockality-cicd --capabilities CAPABILITY_NAMED_IAM \
   --region us-east-1 --profile rockality
-# El ARN del rol (output DeployRoleArn) va en el secret AWS_DEPLOY_ROLE_ARN:
-gh secret set AWS_DEPLOY_ROLE_ARN --body "<DeployRoleArn>"
+# Generar access keys y guardarlas como GitHub Secrets:
+aws iam create-access-key --user-name rockality-github-deploy --profile rockality
+gh secret set AWS_ACCESS_KEY_ID --body "<AccessKeyId>"
+gh secret set AWS_SECRET_ACCESS_KEY --body "<SecretAccessKey>"
 ```
 
 > Para replicar este CI/CD en otro proyecto (p. ej. oil & gas): copia `infra/cicd.yaml`
-> (cambiando repo/rama) y `.github/workflows/cd.yml` (ajustando los `env`). El patrón
-> OIDC evita manejar access keys.
+> (cambiando el nombre del usuario) y `.github/workflows/cd.yml` (ajustando los `env`).
 
 ## Ver logs de la Lambda
 
