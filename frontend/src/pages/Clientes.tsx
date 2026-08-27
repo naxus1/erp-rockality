@@ -35,6 +35,14 @@ interface ApiResponse<T> {
   data: T;
 }
 
+// Enmascara la cédula para mostrarla (deja los 2 primeros y 2 últimos dígitos).
+// Ej: 80727054 -> 80****54. Protege el dato a la vista; el valor real sigue
+// usándose internamente como identificador.
+function maskCedula(cedula: string): string {
+  if (!cedula || cedula.length <= 4) return '****';
+  return `${cedula.slice(0, 2)}${'*'.repeat(cedula.length - 4)}${cedula.slice(-2)}`;
+}
+
 const FORM_VACIO = {
   cedula: '',
   nombre: '',
@@ -741,7 +749,9 @@ export default function Clientes() {
             ) : (
               clientesFiltrados.map((c) => (
                 <tr key={c.cedula} className="border-t border-gray-100 hover:bg-gray-50">
-                  <td className="px-3 py-2 font-mono text-xs">{c.cedula}</td>
+                  <td className="px-3 py-2 font-mono text-xs" title="Cédula protegida">
+                    {maskCedula(c.cedula)}
+                  </td>
                   <td className="px-3 py-2">
                     {c.nombre} {c.apellidos}
                   </td>
@@ -824,7 +834,7 @@ export default function Clientes() {
             </div>
             <div className="grid grid-cols-3 gap-2 text-sm mb-4">
               <div>
-                <span className="text-gray-500">Cédula:</span> {ficha.cliente.cedula}
+                <span className="text-gray-500">Cédula:</span> {maskCedula(ficha.cliente.cedula)}
               </div>
               <div>
                 <span className="text-gray-500">Teléfono:</span> {ficha.cliente.telefono || '-'}

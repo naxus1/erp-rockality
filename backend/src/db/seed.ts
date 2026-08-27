@@ -6,6 +6,7 @@
  */
 import { getDatabase } from './connection.js';
 import { initDatabase } from './init.js';
+import { encryptNullable, hmac } from '../utils/crypto.js';
 
 // Inicializar DB (migraciones)
 initDatabase();
@@ -15,15 +16,136 @@ const db = getDatabase();
 console.warn('\n[SEED] Cargando datos de prueba...\n');
 
 // ─── Clientes ────────────────────────────────────────────
-db.prepare(
-  `INSERT OR IGNORE INTO clientes (cedula, nombre, apellidos, telefono, email, fecha_nacimiento, direccion, ciudad_id, sexo_id, canal_captacion_id, notas, notas_salud, instagram, consentimiento_datos, consentimiento_fecha) VALUES
-  ('80727054', 'Oscar', 'Vargas Molina', '3123378499', 'naxus1@gmail.com', '1982-12-23', 'Cra 15 #45-67', 1, 1, 1, 'Cliente frecuente', 'Lesión rodilla izquierda, no sentadilla profunda', '@oscarvargas', 1, datetime('now')),
-  ('52987654', 'Laura', 'Martinez Ruiz', '3009876543', 'laura@email.com', '1995-03-10', 'Calle 80 #12-34', 2, 2, 4, NULL, NULL, '@lauramtz', 1, datetime('now')),
-  ('10456789', 'Carlos', 'Gomez Peña', '3156789012', NULL, '1988-07-05', NULL, 1, 1, 2, 'Entrena lunes, miércoles y viernes', 'Problema hombro derecho, evitar press militar', NULL, 1, datetime('now')),
-  ('43210987', 'Maria', 'Lopez Torres', '3201234567', 'maria.lopez@email.com', '2000-11-20', 'Av 68 #23-45', 3, 2, 1, 'Busca bajar de peso', NULL, '@mariafit', 1, datetime('now')),
-  ('78901234', 'Andres', 'Rodriguez', '3178901234', NULL, '1992-05-15', NULL, 1, 1, 3, NULL, 'Operación menisco 2024, ya recuperado', NULL, 1, datetime('now'))
-`,
-).run();
+// telefono y email se cifran (AES-256-GCM) y telefono_hash guarda el HMAC para búsqueda.
+const clientesSeed: Array<
+  [
+    string,
+    string,
+    string,
+    string | null,
+    string | null,
+    string,
+    string | null,
+    number,
+    number,
+    number,
+    string | null,
+    string | null,
+    string | null,
+  ]
+> = [
+  [
+    '80727054',
+    'Oscar',
+    'Vargas Molina',
+    '3123378499',
+    'naxus1@gmail.com',
+    '1982-12-23',
+    'Cra 15 #45-67',
+    1,
+    1,
+    1,
+    'Cliente frecuente',
+    'Lesión rodilla izquierda, no sentadilla profunda',
+    '@oscarvargas',
+  ],
+  [
+    '52987654',
+    'Laura',
+    'Martinez Ruiz',
+    '3009876543',
+    'laura@email.com',
+    '1995-03-10',
+    'Calle 80 #12-34',
+    2,
+    2,
+    4,
+    null,
+    null,
+    '@lauramtz',
+  ],
+  [
+    '10456789',
+    'Carlos',
+    'Gomez Peña',
+    '3156789012',
+    null,
+    '1988-07-05',
+    null,
+    1,
+    1,
+    2,
+    'Entrena lunes, miércoles y viernes',
+    'Problema hombro derecho, evitar press militar',
+    null,
+  ],
+  [
+    '43210987',
+    'Maria',
+    'Lopez Torres',
+    '3201234567',
+    'maria.lopez@email.com',
+    '2000-11-20',
+    'Av 68 #23-45',
+    3,
+    2,
+    1,
+    'Busca bajar de peso',
+    null,
+    '@mariafit',
+  ],
+  [
+    '78901234',
+    'Andres',
+    'Rodriguez',
+    '3178901234',
+    null,
+    '1992-05-15',
+    null,
+    1,
+    1,
+    3,
+    null,
+    'Operación menisco 2024, ya recuperado',
+    null,
+  ],
+];
+const insertCliente = db.prepare(
+  `INSERT OR IGNORE INTO clientes (cedula, nombre, apellidos, telefono, telefono_hash, email, fecha_nacimiento, direccion, ciudad_id, sexo_id, canal_captacion_id, notas, notas_salud, instagram, consentimiento_datos, consentimiento_fecha)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))`,
+);
+for (const [
+  cedula,
+  nombre,
+  apellidos,
+  telefono,
+  email,
+  fnac,
+  dir,
+  ciudad,
+  sexo,
+  canal,
+  notas,
+  salud,
+  ig,
+] of clientesSeed) {
+  insertCliente.run(
+    cedula,
+    nombre,
+    apellidos,
+    encryptNullable(telefono),
+    hmac(telefono),
+    encryptNullable(email),
+    fnac,
+    dir,
+    ciudad,
+    sexo,
+    canal,
+    notas,
+    salud,
+    ig,
+  );
+}
 console.warn('  ✓ 5 clientes');
 
 // ─── Terceros ────────────────────────────────────────────
