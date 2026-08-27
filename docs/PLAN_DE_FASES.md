@@ -383,6 +383,35 @@ Permisos: 750 (owner: rwx, group: r-x, others: ---)
 
 ---
 
+### Cifrado de datos sensibles (PII de clientes)
+
+Defensa en capas para proteger cédula, teléfono y email de los clientes ante robo o descarga de la base de datos.
+
+| Capa                          | Qué protege                                                       | Estado                                 |
+| ----------------------------- | ----------------------------------------------------------------- | -------------------------------------- |
+| **Cifrado de columna**        | teléfono y email cifrados con AES-256-GCM (clave fuera de la BD)  | ✅ Implementado (backend)              |
+| **Búsqueda sin exponer**      | `telefono_hash` (HMAC-SHA256) permite buscar por teléfono exacto  | ✅ Implementado                        |
+| **Enmascarado de cédula**     | la cédula se muestra parcial en la UI (`80****54`)                | ✅ Implementado (frontend)             |
+| **Cifrado en reposo (disco)** | el archivo de BD completo cifrado — protege ante robo del archivo | ⏳ Fase AWS (EFS con KMS, ya previsto) |
+| **Clave de cifrado**          | `ENCRYPTION_KEY` fuera del código y de la BD                      | ⏳ Dev: `.env` · Prod: AWS Secrets Mgr |
+
+**Detalle de implementación (fase local, ya hecha):**
+
+- Utilidad `backend/src/utils/crypto.ts`: `encrypt`/`decrypt` (AES-256-GCM, IV aleatorio por valor + authTag) y `hmac` (búsqueda determinista).
+- Formato almacenado: `enc:v1:<iv>:<authTag>:<ciphertext>`. El prefijo permite distinguir texto plano heredado y versionar el esquema.
+- El cifrado/descifrado vive en `clientes.repository.ts` (cifra al escribir, descifra al leer). Ninguna otra capa maneja estos campos en claro.
+- La clave se lee de `ENCRYPTION_KEY` (variable de entorno). En dev hay una clave por defecto; en producción es **obligatoria** (fail-fast si falta).
+
+**Qué falta para producción (fase AWS):**
+
+1. **`ENCRYPTION_KEY` en AWS Secrets Manager** (no en `.env` ni en variables de Lambda en texto plano). La Lambda la lee al arrancar.
+2. **Cifrado en reposo del `.db`**: EFS ya está previsto con cifrado KMS (ver sección EFS). Esto protege el archivo completo si alguien accede al almacenamiento.
+3. **Rotación de clave**: documentar el procedimiento de re-cifrado si se rota `ENCRYPTION_KEY` (leer con clave vieja → re-cifrar con nueva). El prefijo `v1` facilita versionar.
+
+> **Importante:** el cifrado de columna protege ante lectura directa de la tabla (dump, SELECT). El cifrado en reposo del disco protege ante robo del archivo físico. Son complementarios: producción debe tener ambos.
+
+---
+
 ## FASE 1 — DevOps / Infraestructura
 
 ### 1.1 Estructura del Monorepo

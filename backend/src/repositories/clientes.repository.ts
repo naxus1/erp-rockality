@@ -5,6 +5,7 @@
  * La edad se calcula desde fecha_nacimiento (no se almacena).
  */
 import { getDatabase } from '../db/connection.js';
+import { encryptNullable, decrypt, hmac } from '../utils/crypto.js';
 
 export interface Cliente {
   cedula: string;
@@ -25,6 +26,7 @@ export interface Cliente {
   linkedin: string | null;
   referido_por: string | null;
   referido_por_nombre: string | null;
+  telefono_hash: string | null;
   activo: number;
   created_at: string;
   created_by: string | null;
@@ -97,32 +99,48 @@ const SELECT_CLIENTE = `
   LEFT JOIN canales_captacion cc ON c.canal_captacion_id = cc.id
 `;
 
+/** Descifra las columnas sensibles (email, teléfono) de una fila leída. */
+function descifrarFila<T extends ClienteConRelaciones | undefined>(row: T): T {
+  if (!row) return row;
+  row.email = decrypt(row.email);
+  row.telefono = decrypt(row.telefono);
+  return row;
+}
+
 export function findAll(includeInactive = false): ClienteConRelaciones[] {
   const db = getDatabase();
   const where = includeInactive ? '' : 'WHERE c.activo = 1';
-  return db
+  const rows = db
     .prepare(`${SELECT_CLIENTE} ${where} ORDER BY c.nombre, c.apellidos`)
     .all() as ClienteConRelaciones[];
+  return rows.map((r) => descifrarFila(r));
 }
 
 export function findByCedula(cedula: string): ClienteConRelaciones | undefined {
   const db = getDatabase();
-  return db.prepare(`${SELECT_CLIENTE} WHERE c.cedula = ?`).get(cedula) as
+  const row = db.prepare(`${SELECT_CLIENTE} WHERE c.cedula = ?`).get(cedula) as
     | ClienteConRelaciones
     | undefined;
+  return descifrarFila(row);
 }
 
 export function search(query: string): ClienteConRelaciones[] {
   const db = getDatabase();
   const param = `%${query}%`;
-  return db
+  // El teléfono está cifrado: no se puede LIKE. Buscamos por nombre/apellidos/cédula
+  // con LIKE, y además por teléfono exacto vía HMAC (si el término es un número).
+  const telHash = hmac(query);
+  const rows = db
     .prepare(
       `${SELECT_CLIENTE}
-       WHERE c.activo = 1 AND (c.nombre LIKE ? OR c.apellidos LIKE ? OR c.telefono LIKE ? OR c.cedula LIKE ?)
+       WHERE c.activo = 1 AND (
+         c.nombre LIKE ? OR c.apellidos LIKE ? OR c.cedula LIKE ? OR c.telefono_hash = ?
+       )
        ORDER BY c.nombre, c.apellidos
        LIMIT 20`,
     )
-    .all(param, param, param, param) as ClienteConRelaciones[];
+    .all(param, param, param, telHash) as ClienteConRelaciones[];
+  return rows.map((r) => descifrarFila(r));
 }
 
 export function create(data: CreateClienteData): ClienteConRelaciones {
@@ -131,14 +149,15 @@ export function create(data: CreateClienteData): ClienteConRelaciones {
   const consentimientoFecha = consentimiento ? new Date().toISOString() : null;
 
   db.prepare(
-    `INSERT INTO clientes (cedula, nombre, apellidos, telefono, email, fecha_nacimiento, direccion, ciudad_id, sexo_id, canal_captacion_id, consentimiento_datos, consentimiento_fecha, notas, notas_salud, instagram, linkedin, referido_por, referido_por_nombre, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO clientes (cedula, nombre, apellidos, telefono, telefono_hash, email, fecha_nacimiento, direccion, ciudad_id, sexo_id, canal_captacion_id, consentimiento_datos, consentimiento_fecha, notas, notas_salud, instagram, linkedin, referido_por, referido_por_nombre, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     data.cedula,
     data.nombre,
     data.apellidos,
-    data.telefono || null,
-    data.email || null,
+    encryptNullable(data.telefono),
+    hmac(data.telefono),
+    encryptNullable(data.email),
     data.fecha_nacimiento || null,
     data.direccion || null,
     data.ciudad_id || null,
@@ -171,9 +190,14 @@ export function update(cedula: string, data: UpdateClienteData): ClienteConRelac
     consentimientoFecha = data.consentimiento_datos ? new Date().toISOString() : null;
   }
 
+  // current.telefono/email vienen DESCIFRADOS de findByCedula; el valor final
+  // (nuevo o el actual en claro) se vuelve a cifrar antes de guardar.
+  const telefonoFinal = data.telefono ?? current.telefono;
+  const emailFinal = data.email ?? current.email;
+
   db.prepare(
     `UPDATE clientes SET
-       nombre = ?, apellidos = ?, telefono = ?, email = ?,
+       nombre = ?, apellidos = ?, telefono = ?, telefono_hash = ?, email = ?,
        fecha_nacimiento = ?, direccion = ?, ciudad_id = ?, sexo_id = ?,
        canal_captacion_id = ?, consentimiento_datos = ?, consentimiento_fecha = ?,
        notas = ?, notas_salud = ?, instagram = ?, linkedin = ?,
@@ -182,8 +206,9 @@ export function update(cedula: string, data: UpdateClienteData): ClienteConRelac
   ).run(
     data.nombre ?? current.nombre,
     data.apellidos ?? current.apellidos,
-    data.telefono ?? current.telefono,
-    data.email ?? current.email,
+    encryptNullable(telefonoFinal),
+    hmac(telefonoFinal),
+    encryptNullable(emailFinal),
     data.fecha_nacimiento ?? current.fecha_nacimiento,
     data.direccion ?? current.direccion,
     data.ciudad_id ?? current.ciudad_id,
@@ -220,7 +245,7 @@ export function anonimizar(cedula: string, updatedBy?: string): boolean {
     .prepare(
       `UPDATE clientes SET
          nombre = 'Anonimizado', apellidos = 'Anonimizado',
-         telefono = NULL, email = NULL, fecha_nacimiento = NULL,
+         telefono = NULL, telefono_hash = NULL, email = NULL, fecha_nacimiento = NULL,
          direccion = NULL, ciudad_id = NULL, sexo_id = NULL,
          notas = 'Datos eliminados por solicitud del titular',
          notas_salud = NULL, referido_por_nombre = NULL,
