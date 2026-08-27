@@ -17,15 +17,19 @@ import planesRoutes from './planes.routes.js';
 import gastosRoutes from './gastos.routes.js';
 import reportesRoutes from './reportes.routes.js';
 import usuariosRoutes from './usuarios.routes.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
-// Health check
+// Health check — PÚBLICO (antes del middleware de auth)
 router.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Módulos
+// A partir de aquí, todas las rutas requieren autenticación
+router.use(requireAuth);
+
+// Módulos (protegidos)
 router.use('/catalogos', catalogosRoutes);
 router.use('/categorias-producto', categoriasProductoRoutes);
 router.use('/productos', productosRoutes);

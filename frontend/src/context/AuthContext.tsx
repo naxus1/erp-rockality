@@ -12,10 +12,15 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string) => boolean;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
 }
+
+// ¿Está Cognito configurado? (variables de entorno de Vite)
+const COGNITO_CONFIGURED = Boolean(
+  import.meta.env.VITE_COGNITO_USER_POOL_ID && import.meta.env.VITE_COGNITO_CLIENT_ID,
+);
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -46,11 +51,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return stored ? JSON.parse(stored) : null;
   });
 
-  const login = (username: string, password: string): boolean => {
+  const login = async (username: string, password: string): Promise<boolean> => {
+    if (COGNITO_CONFIGURED) {
+      // Producción: login contra Cognito. La integración con Amplify/SDK se
+      // conecta aquí; debe obtener el idToken, guardarlo en 'erp_token' y
+      // poblar el user desde los claims. (Pendiente al configurar el User Pool.)
+      throw new Error('Login con Cognito aún no configurado en este entorno.');
+    }
+
+    // Desarrollo: login local (mock) mientras no exista Cognito.
     const entry = USERS_DEV[username];
     if (entry && entry.password === password) {
       setUser(entry.user);
       localStorage.setItem('erp_user', JSON.stringify(entry.user));
+      // Identifica al usuario para la auditoría del backend en modo dev
+      localStorage.setItem('erp_dev_user', entry.user.id);
       return true;
     }
     return false;
@@ -59,6 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('erp_user');
+    localStorage.removeItem('erp_token');
+    localStorage.removeItem('erp_dev_user');
   };
 
   return (

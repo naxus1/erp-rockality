@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { useAuth } from '../context/AuthContext';
 
 interface Gasto {
   id: number;
@@ -47,7 +46,6 @@ function formatCOP(centavos: number): string {
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 export default function Gastos() {
-  const { user } = useAuth();
   const [vista, setVista] = useState<'lista' | 'nuevo'>('lista');
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [error, setError] = useState('');
@@ -152,7 +150,6 @@ export default function Gastos() {
         descripcion: editForm.descripcion.trim(),
         referencia_pago: editForm.referencia_pago.trim() || undefined,
         notas: editForm.notas.trim() || undefined,
-        updated_by: user?.id,
       });
       setSuccess('Gasto actualizado');
       cerrarEditar();
@@ -187,7 +184,6 @@ export default function Gastos() {
     setError('');
     try {
       await api.post(`/gastos/${anularId}/anular`, {
-        usuario_id: user?.id,
         motivo: motivoAnulacion.trim(),
       });
       setSuccess('Gasto anulado');

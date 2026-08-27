@@ -41,9 +41,10 @@ router.get('/:id', (req: Request, res: Response) => {
 
 // POST /api/gastos
 router.post('/', validate(createGastoSchema), (req: Request, res: Response) => {
-  const gasto = repo.create(req.body);
+  const usuarioId = req.user?.username || 'sistema';
+  const gasto = repo.create({ ...req.body, created_by: usuarioId });
   registrarAudit({
-    usuario_id: req.body.created_by || 'sistema',
+    usuario_id: usuarioId,
     accion: 'crear',
     entidad: 'gastos',
     entidad_id: String(gasto.id),
@@ -54,7 +55,8 @@ router.post('/', validate(createGastoSchema), (req: Request, res: Response) => {
 
 // PUT /api/gastos/:id — Edición limitada (solo descripción, notas, referencia)
 router.put('/:id', validate(updateGastoSchema), (req: Request, res: Response) => {
-  const gasto = repo.update(Number(req.params.id), req.body);
+  const usuarioId = req.user?.username || 'sistema';
+  const gasto = repo.update(Number(req.params.id), { ...req.body, updated_by: usuarioId });
   if (!gasto) {
     res
       .status(400)
@@ -62,7 +64,7 @@ router.put('/:id', validate(updateGastoSchema), (req: Request, res: Response) =>
     return;
   }
   registrarAudit({
-    usuario_id: req.body.updated_by || 'sistema',
+    usuario_id: usuarioId,
     accion: 'editar',
     entidad: 'gastos',
     entidad_id: String(req.params.id),
@@ -82,7 +84,7 @@ router.post('/:id/anular', (req: Request, res: Response) => {
     res.status(400).json({ success: false, error: 'El motivo de anulación es obligatorio' });
     return;
   }
-  const usuarioId = req.body.usuario_id || 'sistema';
+  const usuarioId = req.user?.username || 'sistema';
 
   const result = repo.anular(Number(req.params.id), usuarioId, motivo);
   if (!result) {

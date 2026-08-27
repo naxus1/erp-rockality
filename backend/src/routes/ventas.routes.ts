@@ -30,9 +30,10 @@ router.get('/:id', (req: Request, res: Response) => {
 // POST /api/ventas — Registrar venta
 router.post('/', validate(createVentaSchema), (req: Request, res: Response) => {
   try {
-    const venta = repo.create(req.body);
+    const usuarioId = req.user?.username || 'sistema';
+    const venta = repo.create({ ...req.body, created_by: usuarioId });
     registrarAudit({
-      usuario_id: req.body.created_by || 'sistema',
+      usuario_id: usuarioId,
       accion: 'crear',
       entidad: 'ventas',
       entidad_id: String(venta.id),
@@ -52,7 +53,7 @@ router.post('/:id/anular', (req: Request, res: Response) => {
     res.status(400).json({ success: false, error: 'El motivo de anulación es obligatorio' });
     return;
   }
-  const usuarioId = req.body.usuario_id || 'sistema';
+  const usuarioId = req.user?.username || 'sistema';
 
   const result = repo.anular(Number(req.params.id), usuarioId, motivo);
   if (!result) {

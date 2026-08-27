@@ -1,13 +1,37 @@
 /**
  * API Service — Wrapper para llamadas al backend
+ *
+ * Inyecta el token de autenticación (JWT de Cognito) en el header Authorization.
+ * En desarrollo sin Cognito, además envía X-Dev-User con el usuario logueado
+ * para que la auditoría refleje quién hace cada acción.
  */
 const BASE_URL = '/api';
 
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const token = localStorage.getItem('erp_token');
+  if (token) headers.Authorization = `Bearer ${token}`;
+  // Modo dev (sin token real): identifica al usuario logueado para la auditoría
+  const devUser = localStorage.getItem('erp_dev_user');
+  if (!token && devUser) headers['X-Dev-User'] = devUser;
+  return headers;
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+      ...(options?.headers as Record<string, string> | undefined),
+    },
   });
+
+  if (res.status === 401) {
+    // Token ausente/expirado: forzar re-login
+    localStorage.removeItem('erp_token');
+    localStorage.removeItem('erp_user');
+  }
 
   const data = await res.json();
 
