@@ -57,10 +57,11 @@ db.prepare(
   ('Plan Básico', 'presencial', 30, 8000000, 'Acceso zona de pesas, horario libre'),
   ('Plan Premium', 'presencial', 60, 15000000, 'Acceso completo + coach personalizado'),
   ('Plan Full', 'mixto', 90, 22000000, 'Presencial + virtual + nutrición'),
-  ('Plan Virtual', 'virtual', 30, 5000000, 'Rutinas online + seguimiento')
+  ('Plan Virtual', 'virtual', 30, 5000000, 'Rutinas online + seguimiento'),
+  ('Semana cortesía', 'presencial', 7, 0, 'Semana de cortesía sin costo para nuevos prospectos')
 `,
 ).run();
-console.warn('  ✓ 4 planes');
+console.warn('  ✓ 5 planes');
 
 // ─── Ventas ──────────────────────────────────────────────
 

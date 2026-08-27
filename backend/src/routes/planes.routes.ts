@@ -2,7 +2,11 @@ import { Router, Request, Response } from 'express';
 import * as repo from '../repositories/planes.repository.js';
 import * as suscRepo from '../repositories/suscripciones.repository.js';
 import { validate } from '../middleware/validate.js';
-import { createPlanSchema, updatePlanSchema } from '../schemas/planes.schema.js';
+import {
+  createPlanSchema,
+  updatePlanSchema,
+  createSuscripcionSchema,
+} from '../schemas/planes.schema.js';
 
 const router = Router();
 
@@ -60,6 +64,16 @@ router.get('/suscripciones/por-vencer', (req: Request, res: Response) => {
 router.get('/suscripciones/cliente/:cedula', (req: Request, res: Response) => {
   const suscripciones = suscRepo.findByCliente(req.params.cedula);
   res.json({ success: true, data: suscripciones });
+});
+
+// POST /api/planes/suscripciones — Crear suscripción directa (cortesía, sin venta)
+router.post('/suscripciones', validate(createSuscripcionSchema), (req: Request, res: Response) => {
+  const suscripcion = suscRepo.create(req.body);
+  if (!suscripcion) {
+    res.status(400).json({ success: false, error: 'Cliente o plan no encontrado' });
+    return;
+  }
+  res.status(201).json({ success: true, data: suscripcion });
 });
 
 export default router;

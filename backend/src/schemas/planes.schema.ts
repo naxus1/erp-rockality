@@ -21,3 +21,11 @@ export const updatePlanSchema = z.object({
   activo: z.number().int().min(0).max(1).optional(),
   motivo_inactivacion: z.string().max(500).nullable().optional(),
 });
+
+// Crear suscripción directa (usado para cortesía: monto_pagado 0, sin venta)
+export const createSuscripcionSchema = z.object({
+  cliente_cedula: z.string().min(5, 'La cédula del cliente es obligatoria').max(20),
+  plan_id: z.number().int().positive('El plan es obligatorio'),
+  monto_pagado: z.number().int().min(0).optional(),
+  notas: z.string().max(1000).optional(),
+});
