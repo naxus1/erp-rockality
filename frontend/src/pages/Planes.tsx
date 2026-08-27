@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 
 interface Plan {
@@ -50,7 +51,10 @@ const FORM_VACIO = {
 };
 
 export default function Planes() {
-  const [tab, setTab] = useState<'planes' | 'suscripciones'>('planes');
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState<'planes' | 'suscripciones'>(
+    searchParams.get('tab') === 'suscripciones' ? 'suscripciones' : 'planes',
+  );
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [suscripciones, setSuscripciones] = useState<Suscripcion[]>([]);
   const [porVencer, setPorVencer] = useState<Suscripcion[]>([]);
