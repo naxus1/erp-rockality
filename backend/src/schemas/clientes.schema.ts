@@ -16,6 +16,8 @@ export const createClienteSchema = z.object({
   notas_salud: z.string().max(1000).optional(),
   instagram: z.string().max(100).optional(),
   linkedin: z.string().max(200).optional(),
+  referido_por: z.string().max(20).optional(),
+  referido_por_nombre: z.string().max(150).optional(),
 });
 
 export const updateClienteSchema = z.object({
@@ -36,4 +38,6 @@ export const updateClienteSchema = z.object({
   notas_salud: z.string().max(1000).optional(),
   instagram: z.string().max(100).optional(),
   linkedin: z.string().max(200).optional(),
+  referido_por: z.string().max(20).optional(),
+  referido_por_nombre: z.string().max(150).optional(),
 });

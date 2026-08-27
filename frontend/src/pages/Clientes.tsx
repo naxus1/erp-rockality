@@ -20,6 +20,8 @@ interface Cliente {
   notas_salud: string | null;
   instagram: string | null;
   linkedin: string | null;
+  referido_por: string | null;
+  referido_por_nombre: string | null;
   consentimiento_datos: number;
   activo: number;
 }
@@ -50,6 +52,8 @@ const FORM_VACIO = {
   notas_salud: '',
   instagram: '',
   linkedin: '',
+  referido_por: '',
+  referido_por_nombre: '',
   consentimiento_datos: 0,
 };
 
@@ -79,7 +83,19 @@ export default function Clientes() {
       dias_restantes: number;
       monto_pagado: number;
     }>;
+    referido_por_cliente: { cedula: string; nombre: string; apellidos: string } | null;
+    referidos: Array<{ cedula: string; nombre: string; apellidos: string }>;
+    cortesias_count: number;
   } | null>(null);
+
+  // Planes (para obtener el id del plan de cortesía)
+  const [planes, setPlanes] = useState<Array<{ id: number; nombre: string; precio: number }>>([]);
+  const planCortesia = planes.find((p) => p.precio === 0);
+
+  // Buscador de referidor (cuando el canal es "Referido")
+  const [refBusqueda, setRefBusqueda] = useState('');
+  const [refResultados, setRefResultados] = useState<Cliente[]>([]);
+  const [dandoCortesia, setDandoCortesia] = useState(false);
 
   // Filtros y ordenamiento
   const [filtroCiudad, setFiltroCiudad] = useState('');
@@ -146,14 +162,59 @@ export default function Clientes() {
   };
 
   const cargarCatalogos = async () => {
-    const [c, s, ca] = await Promise.all([
+    const [c, s, ca, pl] = await Promise.all([
       api.get<ApiResponse<Catalogo[]>>('/catalogos/ciudades'),
       api.get<ApiResponse<Catalogo[]>>('/catalogos/sexos'),
       api.get<ApiResponse<Catalogo[]>>('/catalogos/canales-captacion'),
+      api.get<ApiResponse<Array<{ id: number; nombre: string; precio: number }>>>(
+        '/planes?incluir_inactivos=1',
+      ),
     ]);
     setCiudades(c.data);
     setSexos(s.data);
     setCanales(ca.data);
+    setPlanes(pl.data || []);
+  };
+
+  // ¿El canal seleccionado es "Referido"? (comparado por nombre del catálogo)
+  const canalReferido = canales.find((c) => c.nombre.toLowerCase() === 'referido');
+  const esReferido = !!canalReferido && form.canal_captacion_id === String(canalReferido.id);
+
+  // Buscar clientes para elegir quién refirió
+  const buscarReferidor = async (q: string) => {
+    if (q.length < 2) {
+      setRefResultados([]);
+      return;
+    }
+    try {
+      const res = await api.get<ApiResponse<Cliente[]>>(`/clientes/buscar?q=${q}`);
+      setRefResultados(res.data);
+    } catch {
+      /* */
+    }
+  };
+
+  // Dar semana de cortesía a un cliente (suscripción $0 sin venta)
+  const darCortesia = async (cedula: string) => {
+    if (!planCortesia) {
+      setError('No existe el plan de cortesía');
+      return;
+    }
+    setDandoCortesia(true);
+    setError('');
+    try {
+      await api.post('/planes/suscripciones', {
+        cliente_cedula: cedula,
+        plan_id: planCortesia.id,
+        notas: 'Semana de cortesía',
+      });
+      setSuccess('Semana de cortesía otorgada');
+      verFicha(cedula);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error otorgando cortesía');
+    } finally {
+      setDandoCortesia(false);
+    }
   };
 
   useEffect(() => {
@@ -164,6 +225,10 @@ export default function Clientes() {
     const t = setTimeout(() => buscar(), 300);
     return () => clearTimeout(t);
   }, [busqueda]);
+  useEffect(() => {
+    const t = setTimeout(() => buscarReferidor(refBusqueda), 300);
+    return () => clearTimeout(t);
+  }, [refBusqueda]);
 
   const abrirCrear = () => {
     setForm(FORM_VACIO);
@@ -192,8 +257,12 @@ export default function Clientes() {
       notas_salud: c.notas_salud || '',
       instagram: c.instagram || '',
       linkedin: c.linkedin || '',
+      referido_por: c.referido_por || '',
+      referido_por_nombre: c.referido_por_nombre || '',
       consentimiento_datos: c.consentimiento_datos,
     });
+    setRefBusqueda('');
+    setRefResultados([]);
     setEditando(c.cedula);
     setShowForm(true);
     setError('');
@@ -234,6 +303,8 @@ export default function Clientes() {
       notas_salud: form.notas_salud || undefined,
       instagram: form.instagram || undefined,
       linkedin: form.linkedin || undefined,
+      referido_por: esReferido ? form.referido_por || undefined : undefined,
+      referido_por_nombre: esReferido ? form.referido_por_nombre || undefined : undefined,
       consentimiento_datos: form.consentimiento_datos,
     };
 
@@ -434,6 +505,77 @@ export default function Clientes() {
               ))}
             </select>
           </div>
+
+          {/* Referido: quién lo refirió (solo si el canal es "Referido") */}
+          {esReferido && (
+            <div className="col-span-3 grid grid-cols-2 gap-3 bg-blue-50/50 rounded-lg p-3">
+              <div className="relative">
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Referido por (cliente)
+                </label>
+                {form.referido_por ? (
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 rounded-lg px-3 py-2 text-sm neu-pressed">
+                      {refBusqueda || form.referido_por}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm({ ...form, referido_por: '' });
+                        setRefBusqueda('');
+                      }}
+                      className="text-xs text-red-500"
+                      title="Quitar referidor seleccionado"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      value={refBusqueda}
+                      onChange={(e) => setRefBusqueda(e.target.value)}
+                      placeholder="Buscar por nombre o cédula..."
+                      className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                    />
+                    {refResultados.length > 0 && (
+                      <div className="absolute z-10 mt-1 w-full bg-white border rounded max-h-32 overflow-auto shadow">
+                        {refResultados.map((r) => (
+                          <button
+                            type="button"
+                            key={r.cedula}
+                            onClick={() => {
+                              setForm({ ...form, referido_por: r.cedula });
+                              setRefBusqueda(`${r.nombre} ${r.apellidos} — ${r.cedula}`);
+                              setRefResultados([]);
+                            }}
+                            className="block w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100"
+                            title="Seleccionar este referidor"
+                          >
+                            {r.nombre} {r.apellidos} — {r.cedula}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  ...o nombre libre (si no es cliente)
+                </label>
+                <input
+                  type="text"
+                  value={form.referido_por_nombre}
+                  onChange={(e) => setForm({ ...form, referido_por_nombre: e.target.value })}
+                  placeholder="Nombre de quien lo refirió"
+                  className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+                />
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Notas generales</label>
             <input
@@ -706,6 +848,45 @@ export default function Clientes() {
                 Salud: {ficha.cliente.notas_salud}
               </p>
             )}
+
+            {/* Referidos y cortesías */}
+            <div className="grid grid-cols-3 gap-3 mb-4 text-xs">
+              <div className="rounded-lg neu-flat p-3">
+                <span className="text-gray-500 block mb-1">Referido por</span>
+                {ficha.referido_por_cliente ? (
+                  <span className="font-medium">
+                    {ficha.referido_por_cliente.nombre} {ficha.referido_por_cliente.apellidos}
+                  </span>
+                ) : ficha.cliente.referido_por_nombre ? (
+                  <span className="font-medium">{ficha.cliente.referido_por_nombre}</span>
+                ) : (
+                  <span className="text-gray-400">—</span>
+                )}
+              </div>
+              <div className="rounded-lg neu-flat p-3">
+                <span className="text-gray-500 block mb-1">Ha referido</span>
+                <span className="font-medium">{ficha.referidos.length} persona(s)</span>
+                {ficha.referidos.length > 0 && (
+                  <span className="block text-gray-400 mt-0.5">
+                    {ficha.referidos.map((r) => `${r.nombre} ${r.apellidos}`).join(', ')}
+                  </span>
+                )}
+              </div>
+              <div className="rounded-lg neu-flat p-3">
+                <span className="text-gray-500 block mb-1">Semanas de cortesía</span>
+                <span className="font-medium">{ficha.cortesias_count}</span>
+                {planCortesia && (
+                  <button
+                    onClick={() => darCortesia(ficha.cliente.cedula)}
+                    disabled={dandoCortesia}
+                    className="block mt-2 text-gray-700 font-medium px-3 py-1.5 rounded-lg text-xs neu-btn disabled:opacity-50"
+                    title="Otorgar una semana de cortesía a este cliente"
+                  >
+                    {dandoCortesia ? 'Otorgando...' : '+ Dar semana de cortesía'}
+                  </button>
+                )}
+              </div>
+            </div>
 
             {/* Suscripciones */}
             <h4 className="text-sm font-medium mb-2">

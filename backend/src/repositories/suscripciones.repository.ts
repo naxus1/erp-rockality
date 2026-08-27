@@ -67,6 +67,72 @@ export function findPorVencer(dias: number): SuscripcionConRelaciones[] {
     .all(dias) as SuscripcionConRelaciones[];
 }
 
+export interface CreateSuscripcionData {
+  cliente_cedula: string;
+  plan_id: number;
+  monto_pagado?: number; // centavos; 0 para cortesía
+  venta_id?: number | null;
+  notas?: string;
+  created_by?: string;
+}
+
+/**
+ * Crea una suscripción directa (sin venta). Usado para la semana de cortesía:
+ * monto_pagado = 0, venta_id = NULL. La fecha_fin se calcula desde la duración del plan.
+ * Devuelve undefined si el plan o el cliente no existen.
+ */
+export function create(data: CreateSuscripcionData): SuscripcionConRelaciones | undefined {
+  const db = getDatabase();
+
+  const plan = db.prepare('SELECT duracion_dias FROM planes WHERE id = ?').get(data.plan_id) as
+    | { duracion_dias: number }
+    | undefined;
+  if (!plan) return undefined;
+
+  const cliente = db
+    .prepare('SELECT cedula FROM clientes WHERE cedula = ?')
+    .get(data.cliente_cedula) as { cedula: string } | undefined;
+  if (!cliente) return undefined;
+
+  const fechaInicio = new Date().toISOString().split('T')[0];
+  const fechaFin = new Date(Date.now() + plan.duracion_dias * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split('T')[0];
+
+  const result = db
+    .prepare(
+      `INSERT INTO suscripciones (cliente_cedula, plan_id, venta_id, fecha_inicio, fecha_fin, monto_pagado, notas, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      data.cliente_cedula,
+      data.plan_id,
+      data.venta_id ?? null,
+      fechaInicio,
+      fechaFin,
+      data.monto_pagado ?? 0,
+      data.notas || null,
+      data.created_by || null,
+    );
+
+  return db
+    .prepare(`${SELECT_SUSCRIPCION} WHERE s.id = ?`)
+    .get(Number(result.lastInsertRowid)) as SuscripcionConRelaciones;
+}
+
+/** Cuenta cuántas suscripciones de cortesía (plan con precio 0) ha tenido un cliente */
+export function contarCortesias(cedula: string): number {
+  const db = getDatabase();
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) as n
+       FROM suscripciones s JOIN planes p ON s.plan_id = p.id
+       WHERE s.cliente_cedula = ? AND p.precio = 0`,
+    )
+    .get(cedula) as { n: number };
+  return row.n;
+}
+
 /** Marcar como vencidas las que ya pasaron fecha_fin */
 export function actualizarVencidas(): number {
   const db = getDatabase();

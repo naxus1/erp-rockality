@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import * as repo from '../repositories/clientes.repository.js';
+import * as suscRepo from '../repositories/suscripciones.repository.js';
 import { getDatabase } from '../db/connection.js';
 import { validate } from '../middleware/validate.js';
 import { createClienteSchema, updateClienteSchema } from '../schemas/clientes.schema.js';
@@ -84,7 +85,33 @@ router.get('/:cedula/ficha', (req: Request, res: Response) => {
       "SELECT s.*, p.nombre as plan_nombre, p.modalidad as plan_modalidad, CAST(julianday(s.fecha_fin) - julianday('now') AS INTEGER) as dias_restantes FROM suscripciones s JOIN planes p ON s.plan_id = p.id WHERE s.cliente_cedula = ? ORDER BY s.fecha_inicio DESC",
     )
     .all(req.params.cedula);
-  res.json({ success: true, data: { cliente, ventas, suscripciones } });
+
+  // Quién lo refirió (si referido_por es la cédula de un cliente)
+  let referido_por_cliente: { cedula: string; nombre: string; apellidos: string } | null = null;
+  if (cliente.referido_por) {
+    referido_por_cliente =
+      (db
+        .prepare('SELECT cedula, nombre, apellidos FROM clientes WHERE cedula = ?')
+        .get(cliente.referido_por) as {
+        cedula: string;
+        nombre: string;
+        apellidos: string;
+      }) || null;
+  }
+
+  // A quiénes ha referido este cliente
+  const referidos = db
+    .prepare(
+      'SELECT cedula, nombre, apellidos FROM clientes WHERE referido_por = ? ORDER BY nombre, apellidos',
+    )
+    .all(req.params.cedula);
+
+  const cortesias_count = suscRepo.contarCortesias(req.params.cedula);
+
+  res.json({
+    success: true,
+    data: { cliente, ventas, suscripciones, referido_por_cliente, referidos, cortesias_count },
+  });
 });
 router.post('/:cedula/anonimizar', (req: Request, res: Response) => {
   const result = repo.anonimizar(req.params.cedula);
