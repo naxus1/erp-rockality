@@ -14,18 +14,18 @@ API a internet sin autenticación real.
 
 ## Estado actual (pre-deploy)
 
-| Área                         | Estado                                                         |
-| ---------------------------- | -------------------------------------------------------------- |
-| App funcional (CRUD, UI)     | ✅ Completa                                                    |
-| Migraciones incrementales    | ✅ Rebuild limpio verificado (001–011)                         |
-| Cifrado de PII (columna)     | ✅ email/teléfono AES-256-GCM + `telefono_hash`                |
-| Handler Lambda               | ✅ `backend/src/handler.ts` (serverless-express)               |
-| CI (lint)                    | ✅ `.github/workflows/ci.yml`                                  |
-| **Autenticación real (JWT)** | ❌ **BLOQUEANTE** — hoy el login es mock, el backend no valida |
-| IaC (SAM template)           | ❌ Falta `infra/template.yaml`                                 |
-| CD (deploy automático)       | ❌ Falta `.github/workflows/cd.yml`                            |
-| Secret de cifrado en la nube | ❌ Falta mover `ENCRYPTION_KEY` a Secrets Manager              |
-| Tests automatizados          | ⚠️ No hay (no bloquea, pero es riesgo)                         |
+| Área                         | Estado                                                     |
+| ---------------------------- | ---------------------------------------------------------- |
+| App funcional (CRUD, UI)     | ✅ Completa                                                |
+| Migraciones incrementales    | ✅ Rebuild limpio verificado (001–011)                     |
+| Cifrado de PII (columna)     | ✅ email/teléfono AES-256-GCM + `telefono_hash`            |
+| Handler Lambda               | ✅ `backend/src/handler.ts` (serverless-express)           |
+| CI (lint)                    | ✅ `.github/workflows/ci.yml`                              |
+| **Autenticación real (JWT)** | ✅ Backend valida JWT Cognito; falta conectar el pool real |
+| IaC (SAM template)           | ✅ `infra/template.yaml` creado                            |
+| CD (deploy automático)       | ❌ Falta `.github/workflows/cd.yml`                        |
+| Secret de cifrado en la nube | ❌ Falta mover `ENCRYPTION_KEY` a Secrets Manager          |
+| Tests automatizados          | ⚠️ No hay (no bloquea, pero es riesgo)                     |
 
 ---
 
@@ -70,18 +70,28 @@ Hoy cualquiera que llame a la API entra. Antes de exponerla:
 
 ## FASE 1 — Infraestructura como código (SAM)
 
-- [ ] Crear `infra/template.yaml` con:
-  - [ ] **VPC** dedicada + 2 subnets privadas (2 AZs), sin Internet/NAT Gateway.
-  - [ ] **EFS** con cifrado KMS + Access Point (`/data`, uid/gid 1000, permisos 750).
-  - [ ] **Security Groups**: SG-Lambda → SG-EFS (solo puerto NFS 2049).
-  - [ ] **Lambda** (Node 20, 256 MB, timeout 30s, `reservedConcurrency: 1`, VPC + EFS montado en `/mnt/data`).
-  - [ ] **API Gateway** con Cognito Authorizer, throttling y CORS restringido al dominio del frontend.
-  - [ ] **Cognito User Pool** + App Client (o referenciar el creado en 0.4).
-  - [ ] **S3** (frontend) con Block Public Access + acceso solo vía CloudFront (OAC).
-  - [ ] **CloudFront** (HTTPS only, TLS 1.2+, headers de seguridad).
-  - [ ] **Secrets Manager**: secreto `rockality/encryption-key`.
-- [ ] Parámetros por ambiente en `infra/parameters/` (`dev.json`, `prod.json`).
-- [ ] `sam validate --profile rockality` sin errores.
+✅ **`infra/template.yaml` ya está creado.** Define (22 recursos):
+
+- **VPC** dedicada + 2 subnets privadas (2 AZs), **sin Internet/NAT Gateway** (ahorro de costo).
+- **EFS** con cifrado KMS + Access Point (`/data`, uid/gid 1000, permisos 0750).
+- **Security Groups**: SG-Lambda → SG-EFS (solo puerto NFS 2049).
+- **Lambda** (Node 20, 256 MB, timeout 30s, `ReservedConcurrentExecutions: 1`, VPC + EFS en `/mnt/data`).
+- **API Gateway (HTTP API)** con Cognito JWT Authorizer, throttling (100 rps / burst 50) y CORS restringido. `/api/health` queda público.
+- **Cognito** User Pool + App Client (self-signup off) + grupos `admin` y `gerente`.
+- **S3** (frontend) privado (Block Public Access) + acceso solo vía CloudFront (OAC).
+- **CloudFront** (HTTPS obligatorio, SPA fallback a `index.html`, PriceClass_100).
+- **Secrets Manager**: secreto `rockality/<stage>/encryption-key` (autogenerado).
+- **Budget** USD 10/mes con alertas al 50% y 100% por email.
+- **Logs** con retención de 14 días.
+
+Pasos:
+
+- [ ] Editar `infra/parameters/prod.json`: poner tu `BudgetEmail` real. `AllowedOrigins` se ajusta tras el primer deploy (cuando exista la URL de CloudFront).
+- [ ] `sam validate -t infra/template.yaml --profile rockality` sin errores.
+
+> Nota: el template usa `CodeUri: ../backend/` con `Handler: dist/handler.handler`, por lo que
+> el backend debe compilarse a `backend/dist` (via `npm run build:backend`) antes de `sam build`,
+> o dejar que `sam build` lo maneje con el builder de Node.
 
 ---
 
@@ -90,8 +100,9 @@ Hoy cualquiera que llame a la API entra. Antes de exponerla:
 - [ ] Config: la Lambda debe usar `DB_PATH=/mnt/data/prod.db` (EFS) vía variable de entorno.
 - [ ] Config: leer `ENCRYPTION_KEY` desde **Secrets Manager** al arrancar (no como env en texto plano).
 - [ ] Arranque: correr migraciones automáticamente si la DB en EFS no está al día (el runner ya es incremental e idempotente).
-- [ ] `sam build` (con Docker, para compilar `better-sqlite3` para el runtime de Lambda).
-- [ ] `sam deploy --guided --profile rockality` (primer deploy crea el stack).
+- [ ] `npm run build:backend` (genera `backend/dist`).
+- [ ] `sam build -t infra/template.yaml --use-container` (Docker: compila `better-sqlite3` para el runtime de Lambda).
+- [ ] `sam deploy --guided -t infra/template.yaml --profile rockality --parameter-overrides $(cat infra/parameters/prod.json | tr -d '[]",' )` (primer deploy crea el stack; guarda la config en `samconfig.toml`).
 - [ ] Verificar en CloudWatch Logs que la Lambda arranca y aplica migraciones.
 - [ ] Probar el health check vía la URL de API Gateway.
 
