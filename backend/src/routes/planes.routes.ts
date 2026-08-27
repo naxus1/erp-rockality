@@ -62,7 +62,8 @@ router.get('/suscripciones/por-vencer', (req: Request, res: Response) => {
 
 // GET /api/planes/suscripciones/cliente/:cedula
 router.get('/suscripciones/cliente/:cedula', (req: Request, res: Response) => {
-  const suscripciones = suscRepo.findByCliente(req.params.cedula);
+  const cedula = typeof req.params.cedula === 'string' ? req.params.cedula : '';
+  const suscripciones = suscRepo.findByCliente(cedula);
   res.json({ success: true, data: suscripciones });
 });
 

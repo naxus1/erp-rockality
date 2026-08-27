@@ -13,10 +13,19 @@
  * El resultado: tu código Express funciona IGUAL en local y en Lambda,
  * sin modificar ni una línea de lógica.
  */
-import serverlessExpress from '@vendia/serverless-express';
+import serverlessExpressPkg from '@vendia/serverless-express';
 import app from './app.js';
 import { initDatabase } from './db/init.js';
 import { loadEncryptionKey } from './utils/crypto.js';
+
+// Interop CJS/ESM: el paquete expone la fábrica como default; según el modo de
+// carga puede venir en `.default`. Tomamos la que sea callable.
+type SEFactory = (opts: { app: unknown }) => (e: unknown, c: unknown, cb: unknown) => unknown;
+const serverlessExpress = (
+  typeof serverlessExpressPkg === 'function'
+    ? serverlessExpressPkg
+    : (serverlessExpressPkg as unknown as { default: SEFactory }).default
+) as SEFactory;
 
 // Inicialización perezosa en el arranque en frío (cold start): resuelve la clave
 // de cifrado desde Secrets Manager y aplica migraciones sobre la DB en EFS.
@@ -35,10 +44,5 @@ export const handler = async (
 ): Promise<unknown> => {
   if (!ready) ready = bootstrap();
   await ready;
-  // serverless-express acepta (event, context, callback)
-  return (serverlessHandler as (e: unknown, c: unknown, cb: unknown) => unknown)(
-    event,
-    context,
-    callback,
-  );
+  return serverlessHandler(event, context, callback);
 };

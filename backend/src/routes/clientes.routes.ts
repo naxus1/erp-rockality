@@ -27,7 +27,8 @@ router.get('/buscar', (req: Request, res: Response) => {
 
 // GET /api/clientes/:cedula — Obtener uno por cédula
 router.get('/:cedula', (req: Request, res: Response) => {
-  const cliente = repo.findByCedula(req.params.cedula);
+  const cedula = typeof req.params.cedula === 'string' ? req.params.cedula : '';
+  const cliente = repo.findByCedula(cedula);
   if (!cliente) {
     res.status(404).json({ success: false, error: 'Cliente no encontrado' });
     return;
@@ -49,7 +50,8 @@ router.post('/', validate(createClienteSchema), (req: Request, res: Response) =>
 
 // PUT /api/clientes/:cedula — Editar
 router.put('/:cedula', validate(updateClienteSchema), (req: Request, res: Response) => {
-  const cliente = repo.update(req.params.cedula, req.body);
+  const cedula = typeof req.params.cedula === 'string' ? req.params.cedula : '';
+  const cliente = repo.update(cedula, req.body);
   if (!cliente) {
     res.status(404).json({ success: false, error: 'Cliente no encontrado' });
     return;
@@ -59,7 +61,8 @@ router.put('/:cedula', validate(updateClienteSchema), (req: Request, res: Respon
 
 // DELETE /api/clientes/:cedula — Desactivar (soft delete)
 router.delete('/:cedula', (req: Request, res: Response) => {
-  const deleted = repo.deactivate(req.params.cedula);
+  const cedula = typeof req.params.cedula === 'string' ? req.params.cedula : '';
+  const deleted = repo.deactivate(cedula);
   if (!deleted) {
     res.status(404).json({ success: false, error: 'Cliente no encontrado' });
     return;
@@ -69,7 +72,8 @@ router.delete('/:cedula', (req: Request, res: Response) => {
 
 // GET /api/clientes/:cedula/ficha — Ficha completa del cliente
 router.get('/:cedula/ficha', (req: Request, res: Response) => {
-  const cliente = repo.findByCedula(req.params.cedula);
+  const cedula = typeof req.params.cedula === 'string' ? req.params.cedula : '';
+  const cliente = repo.findByCedula(cedula);
   if (!cliente) {
     res.status(404).json({ success: false, error: 'Cliente no encontrado' });
     return;
@@ -79,12 +83,12 @@ router.get('/:cedula/ficha', (req: Request, res: Response) => {
     .prepare(
       'SELECT id, fecha, total, estado, tipo FROM ventas WHERE cliente_cedula = ? ORDER BY fecha DESC',
     )
-    .all(req.params.cedula);
+    .all(cedula);
   const suscripciones = db
     .prepare(
       "SELECT s.*, p.nombre as plan_nombre, p.modalidad as plan_modalidad, CAST(julianday(s.fecha_fin) - julianday('now') AS INTEGER) as dias_restantes FROM suscripciones s JOIN planes p ON s.plan_id = p.id WHERE s.cliente_cedula = ? ORDER BY s.fecha_inicio DESC",
     )
-    .all(req.params.cedula);
+    .all(cedula);
 
   // Quién lo refirió (si referido_por es la cédula de un cliente)
   let referido_por_cliente: { cedula: string; nombre: string; apellidos: string } | null = null;
@@ -104,9 +108,9 @@ router.get('/:cedula/ficha', (req: Request, res: Response) => {
     .prepare(
       'SELECT cedula, nombre, apellidos FROM clientes WHERE referido_por = ? ORDER BY nombre, apellidos',
     )
-    .all(req.params.cedula);
+    .all(cedula);
 
-  const cortesias_count = suscRepo.contarCortesias(req.params.cedula);
+  const cortesias_count = suscRepo.contarCortesias(cedula);
 
   res.json({
     success: true,
@@ -114,7 +118,8 @@ router.get('/:cedula/ficha', (req: Request, res: Response) => {
   });
 });
 router.post('/:cedula/anonimizar', (req: Request, res: Response) => {
-  const result = repo.anonimizar(req.params.cedula);
+  const cedula = typeof req.params.cedula === 'string' ? req.params.cedula : '';
+  const result = repo.anonimizar(cedula);
   if (!result) {
     res.status(404).json({ success: false, error: 'Cliente no encontrado' });
     return;
