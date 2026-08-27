@@ -72,6 +72,7 @@ export default function Login() {
           <button
             type="submit"
             className="w-full text-gray-700 font-medium py-2.5 rounded-lg text-sm neu-btn transition-all hover:text-gray-900"
+            title="Iniciar sesión en el sistema"
           >
             Iniciar sesión
           </button>

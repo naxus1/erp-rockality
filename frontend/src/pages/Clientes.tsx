@@ -259,6 +259,7 @@ export default function Clientes() {
         <button
           onClick={showForm ? cerrarForm : abrirCrear}
           className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+          title={showForm ? 'Cerrar el formulario' : 'Crear un nuevo cliente'}
         >
           {showForm ? 'Cancelar' : '+ Nuevo cliente'}
         </button>
@@ -486,6 +487,7 @@ export default function Clientes() {
             <button
               type="submit"
               className="ml-auto text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+              title={editando ? 'Guardar los cambios del cliente' : 'Guardar el nuevo cliente'}
             >
               {editando ? 'Actualizar' : 'Guardar'}
             </button>
@@ -533,6 +535,7 @@ export default function Clientes() {
               setFiltroSexo('');
             }}
             className="text-xs text-gray-500 hover:text-gray-800"
+            title="Quitar los filtros aplicados"
           >
             Limpiar
           </button>
@@ -666,7 +669,11 @@ export default function Clientes() {
               <h3 className="text-lg font-bold">
                 Ficha: {ficha.cliente.nombre} {ficha.cliente.apellidos}
               </h3>
-              <button onClick={cerrarFicha} className="text-gray-400 hover:text-gray-800 text-lg">
+              <button
+                onClick={cerrarFicha}
+                className="text-gray-400 hover:text-gray-800 text-lg"
+                title="Cerrar ficha"
+              >
                 ✕
               </button>
             </div>
