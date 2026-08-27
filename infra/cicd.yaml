@@ -1,54 +1,16 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  CI/CD — OIDC provider de GitHub + IAM Role que GitHub Actions asume (sin llaves
-  permanentes) para desplegar el ERP Rockality. Stack separado del de la app.
-
-Parameters:
-  GitHubOrg:
-    Type: String
-    Default: naxus1
-  GitHubRepo:
-    Type: String
-    Default: erp-rockality
-  DeployBranch:
-    Type: String
-    Default: main
-    Description: Solo esta rama puede desplegar.
+  CI/CD — Usuario IAM de despliegue para GitHub Actions (ERP Rockality).
+  Stack separado del de la app. Las access keys se generan aparte (CLI) y se
+  guardan como GitHub Secrets.
+  NOTA: se intentó OIDC (rol federado) pero la cuenta rechazaba el AssumeRole;
+  se usa un usuario IAM dedicado con permisos de deploy. Ver LECCIONES_DEPLOY.md.
 
 Resources:
-  # Proveedor OIDC de GitHub Actions (uno por cuenta)
-  GitHubOIDCProvider:
-    Type: AWS::IAM::OIDCProvider
+  DeployUser:
+    Type: AWS::IAM::User
     Properties:
-      Url: https://token.actions.githubusercontent.com
-      ClientIdList:
-        - sts.amazonaws.com
-      # GitHub rota su cert; AWS ya no valida thumbprint para este provider,
-      # pero el campo es obligatorio. Se usa el thumbprint publico conocido.
-      ThumbprintList:
-        - 6938fd4d98bab03faadb97b34396831e3780aea1
-
-  # Rol que asume GitHub Actions al desplegar (confianza restringida al repo+rama)
-  DeployRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: rockality-github-deploy
-      MaxSessionDuration: 3600
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Federated: !GetAtt GitHubOIDCProvider.Arn
-            Action: sts:AssumeRoleWithWebIdentity
-            Condition:
-              StringEquals:
-                token.actions.githubusercontent.com:aud: sts.amazonaws.com
-              StringLike:
-                # Solo el repo y la rama indicados pueden asumir el rol
-                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/${DeployBranch}'
-      # Permisos de despliegue. Amplio pero acotado a lo que usa el stack de la app.
-      # (Para máxima granularidad se puede restringir por recurso más adelante.)
+      UserName: rockality-github-deploy
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
         - arn:aws:iam::aws:policy/AWSLambda_FullAccess
@@ -86,6 +48,6 @@ Resources:
                 Resource: '*'
 
 Outputs:
-  DeployRoleArn:
-    Description: ARN del rol para GitHub Actions (secret AWS_DEPLOY_ROLE_ARN)
-    Value: !GetAtt DeployRole.Arn
+  DeployUserName:
+    Description: Usuario IAM para CI/CD. Generar access keys y guardarlas en GitHub Secrets.
+    Value: !Ref DeployUser
