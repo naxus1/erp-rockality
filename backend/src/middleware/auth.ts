@@ -18,6 +18,7 @@
  */
 import type { Request, Response, NextFunction } from 'express';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
+import { getCurrentInvoke } from '@vendia/serverless-express';
 import { config } from '../config/index.js';
 
 export interface AuthUser {
@@ -74,26 +75,63 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  // ── Modo real: validar JWT de Cognito ──
+  // ── Modo real ──
+  // 1) Si el request viene de API Gateway (HTTP API con JWT authorizer), el token
+  //    YA fue validado por el gateway. Tomamos los claims del request context
+  //    (evita re-validar y no requiere salida a internet para las JWKS).
+  const claims = getClaimsFromApiGateway(req);
+  if (claims) {
+    req.user = mapClaims(claims);
+    next();
+    return;
+  }
+
+  // 2) Fallback (Express sin API Gateway delante): validar el JWT con las JWKS.
+  //    Requiere acceso a internet a las claves públicas de Cognito.
   const authHeader = req.header('Authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!token) {
     res.status(401).json({ success: false, error: 'Falta el token de autenticación' });
     return;
   }
-
   try {
-    const payload = await verifier!.verify(token);
-    req.user = {
-      sub: String(payload.sub),
-      username: String(payload['cognito:username'] || payload.sub),
-      email: (payload.email as string) || null,
-      rol: rolDesdeGrupos(payload['cognito:groups']),
-    };
+    const payload = (await verifier!.verify(token)) as Record<string, unknown>;
+    req.user = mapClaims(payload);
     next();
   } catch {
     res.status(401).json({ success: false, error: 'Token inválido o expirado' });
   }
+}
+
+/** Lee los claims validados por el JWT authorizer del HTTP API (si existen). */
+function getClaimsFromApiGateway(_req: Request): Record<string, unknown> | null {
+  try {
+    const { event } = getCurrentInvoke() as {
+      event?: { requestContext?: { authorizer?: { jwt?: { claims?: Record<string, unknown> } } } };
+    };
+    const claims = event?.requestContext?.authorizer?.jwt?.claims;
+    return claims && typeof claims === 'object' ? claims : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Construye el AuthUser a partir de los claims del token. */
+function mapClaims(payload: Record<string, unknown>): AuthUser {
+  // cognito:groups puede venir como array o como string "[admin]" desde el gateway
+  let grupos: unknown = payload['cognito:groups'];
+  if (typeof grupos === 'string') {
+    grupos = grupos
+      .replace(/^\[|\]$/g, '')
+      .split(/[\s,]+/)
+      .filter(Boolean);
+  }
+  return {
+    sub: String(payload.sub || ''),
+    username: String(payload['cognito:username'] || payload.sub || ''),
+    email: (payload.email as string) || null,
+    rol: rolDesdeGrupos(grupos),
+  };
 }
 
 /**

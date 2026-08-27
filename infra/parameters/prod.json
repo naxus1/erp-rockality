@@ -1,1 +1,5 @@
-["Stage=prod", "BudgetEmail=naxus1@gmail.com", "AllowedOrigins=https://CAMBIAR.cloudfront.net"]
+[
+  "Stage=prod",
+  "BudgetEmail=naxus1@gmail.com",
+  "AllowedOrigins=https://d2a6va7cqw90db.cloudfront.net"
+]

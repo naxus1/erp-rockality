@@ -5,7 +5,10 @@
  * En desarrollo sin Cognito, además envía X-Dev-User con el usuario logueado
  * para que la auditoría refleje quién hace cada acción.
  */
-const BASE_URL = '/api';
+// En dev usamos el proxy de Vite (/api -> localhost:3000). En producción,
+// VITE_API_URL apunta al API Gateway; las rutas ya incluyen el prefijo /api.
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) || '';
+const BASE_URL = `${API_BASE}/api`;
 
 function authHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};
