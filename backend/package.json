@@ -2,6 +2,7 @@
   "name": "@erp-rockality/backend",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Backend API del ERP Rockality — Node.js + Express + SQLite",
   "main": "dist/index.js",
   "scripts": {

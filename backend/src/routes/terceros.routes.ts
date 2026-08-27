@@ -27,7 +27,8 @@ router.get('/buscar', (req: Request, res: Response) => {
 
 // GET /api/terceros/:nit
 router.get('/:nit', (req: Request, res: Response) => {
-  const tercero = repo.findByNit(req.params.nit);
+  const nit = typeof req.params.nit === 'string' ? req.params.nit : '';
+  const tercero = repo.findByNit(nit);
   if (!tercero) {
     res.status(404).json({ success: false, error: 'Tercero no encontrado' });
     return;
@@ -48,7 +49,8 @@ router.post('/', validate(createTerceroSchema), (req: Request, res: Response) =>
 
 // PUT /api/terceros/:nit
 router.put('/:nit', validate(updateTerceroSchema), (req: Request, res: Response) => {
-  const tercero = repo.update(req.params.nit, req.body);
+  const nit = typeof req.params.nit === 'string' ? req.params.nit : '';
+  const tercero = repo.update(nit, req.body);
   if (!tercero) {
     res.status(404).json({ success: false, error: 'Tercero no encontrado' });
     return;
@@ -58,7 +60,8 @@ router.put('/:nit', validate(updateTerceroSchema), (req: Request, res: Response)
 
 // DELETE /api/terceros/:nit
 router.delete('/:nit', (req: Request, res: Response) => {
-  const deleted = repo.deactivate(req.params.nit);
+  const nit = typeof req.params.nit === 'string' ? req.params.nit : '';
+  const deleted = repo.deactivate(nit);
   if (!deleted) {
     res.status(404).json({ success: false, error: 'Tercero no encontrado' });
     return;
