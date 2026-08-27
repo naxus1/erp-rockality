@@ -29,6 +29,20 @@ if (isProduction && !encryptionKey) {
   );
 }
 
+// Autenticación con AWS Cognito. En producción es OBLIGATORIA (fail-fast).
+// En desarrollo, si no está configurada, el backend usa un modo "auth dev"
+// que acepta un usuario simulado para no bloquear el trabajo local.
+const cognitoUserPoolId = process.env.COGNITO_USER_POOL_ID || '';
+const cognitoClientId = process.env.COGNITO_CLIENT_ID || '';
+const cognitoRegion = process.env.COGNITO_REGION || 'us-east-1';
+const cognitoConfigured = Boolean(cognitoUserPoolId && cognitoClientId);
+
+if (isProduction && !cognitoConfigured) {
+  throw new Error(
+    'COGNITO_USER_POOL_ID y COGNITO_CLIENT_ID son obligatorios en producción. Configúralos en el entorno.',
+  );
+}
+
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -36,4 +50,10 @@ export const config = {
   allowedOrigins: process.env.ALLOWED_ORIGINS || 'http://localhost:5173',
   isProduction,
   encryptionKey,
+  cognito: {
+    userPoolId: cognitoUserPoolId,
+    clientId: cognitoClientId,
+    region: cognitoRegion,
+    configured: cognitoConfigured,
+  },
 } as const;

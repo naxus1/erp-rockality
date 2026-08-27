@@ -10,7 +10,7 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -19,11 +19,15 @@ export default function Login() {
       return;
     }
 
-    const success = login(username, password);
-    if (success) {
-      navigate('/');
-    } else {
-      setError('Usuario o contraseña incorrectos');
+    try {
+      const success = await login(username, password);
+      if (success) {
+        navigate('/');
+      } else {
+        setError('Usuario o contraseña incorrectos');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
     }
   };
 

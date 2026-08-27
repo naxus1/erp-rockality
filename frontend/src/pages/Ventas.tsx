@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
-import { useAuth } from '../context/AuthContext';
 
 interface Producto {
   sku: string;
@@ -85,7 +84,6 @@ function formatCOP(centavos: number): string {
 }
 
 export default function Ventas() {
-  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [vista, setVista] = useState<'lista' | 'nueva' | 'detalle'>('lista');
   // Modal de anulación (id de la venta a anular + motivo)
@@ -194,7 +192,6 @@ export default function Ventas() {
     setSuccess('');
     try {
       await api.post(`/ventas/${anularId}/anular`, {
-        usuario_id: user?.id,
         motivo: motivoAnulacion.trim(),
       });
       setSuccess('Venta anulada. Stock restaurado.');
