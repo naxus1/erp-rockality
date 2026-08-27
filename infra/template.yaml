@@ -1,0 +1,414 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ERP Rockality — Infraestructura serverless de bajo costo.
+  Frontend (S3 + CloudFront) -> API Gateway -> Lambda (Express) -> EFS (SQLite).
+  Auth con Cognito. Secreto de cifrado en Secrets Manager.
+  Diseñado para ~2-10 usuarios internos. SIN NAT Gateway (ahorro de costo).
+
+# ─────────────────────────────────────────────────────────────
+# Parámetros (valores por ambiente en infra/parameters/*.json)
+# ─────────────────────────────────────────────────────────────
+Parameters:
+  Stage:
+    Type: String
+    AllowedValues: [dev, prod]
+    Default: prod
+    Description: Ambiente de despliegue.
+  BudgetEmail:
+    Type: String
+    Description: Email para recibir las alertas de presupuesto (50% y 100% de USD 10).
+  AllowedOrigins:
+    Type: String
+    Description: Origen(es) permitido(s) para CORS (URL del frontend en CloudFront).
+    Default: '*'
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+  Subnet1Cidr:
+    Type: String
+    Default: 10.0.1.0/24
+  Subnet2Cidr:
+    Type: String
+    Default: 10.0.2.0/24
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    MemorySize: 256
+    Timeout: 30
+
+Resources:
+  # ───────────────────────────────────────────────────────────
+  # RED — VPC privada sin salida a internet (sin IGW ni NAT)
+  # ───────────────────────────────────────────────────────────
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - { Key: Name, Value: !Sub 'rockality-${Stage}-vpc' }
+        - { Key: Project, Value: rockality }
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref Subnet1Cidr
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - { Key: Name, Value: !Sub 'rockality-${Stage}-private-1' }
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref Subnet2Cidr
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - { Key: Name, Value: !Sub 'rockality-${Stage}-private-2' }
+
+  # SG de la Lambda (sin reglas de entrada; salida solo a EFS)
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SG de la Lambda del ERP
+      VpcId: !Ref Vpc
+      Tags:
+        - { Key: Name, Value: !Sub 'rockality-${Stage}-sg-lambda' }
+
+  # SG del EFS: solo acepta NFS (2049) desde la Lambda
+  EfsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SG del EFS del ERP
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      Tags:
+        - { Key: Name, Value: !Sub 'rockality-${Stage}-sg-efs' }
+
+  # ───────────────────────────────────────────────────────────
+  # EFS — Almacenamiento de la base SQLite (cifrado en reposo)
+  # ───────────────────────────────────────────────────────────
+  FileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true # cifrado en reposo con KMS (aws/elasticfilesystem)
+      PerformanceMode: generalPurpose
+      ThroughputMode: bursting
+      FileSystemTags:
+        - { Key: Name, Value: !Sub 'rockality-${Stage}-efs' }
+
+  MountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !Ref PrivateSubnet1
+      SecurityGroups: [!Ref EfsSecurityGroup]
+
+  MountTarget2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !Ref PrivateSubnet2
+      SecurityGroups: [!Ref EfsSecurityGroup]
+
+  AccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: !Ref FileSystem
+      PosixUser:
+        Uid: '1000'
+        Gid: '1000'
+      RootDirectory:
+        Path: /data
+        CreationInfo:
+          OwnerUid: '1000'
+          OwnerGid: '1000'
+          Permissions: '0750'
+
+  # ───────────────────────────────────────────────────────────
+  # SECRETS — Clave de cifrado de datos sensibles
+  # ───────────────────────────────────────────────────────────
+  EncryptionKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub 'rockality/${Stage}/encryption-key'
+      Description: Clave AES-256 para cifrar email/telefono de clientes.
+      GenerateSecretString:
+        PasswordLength: 64
+        ExcludePunctuation: true
+        ExcludeUppercase: false
+
+  # ───────────────────────────────────────────────────────────
+  # COGNITO — Autenticación
+  # ───────────────────────────────────────────────────────────
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub 'rockality-${Stage}'
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true # self-signup DESHABILITADO
+      AutoVerifiedAttributes: [email]
+      UsernameAttributes: [email]
+      MfaConfiguration: 'OPTIONAL'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub 'rockality-${Stage}-web'
+      GenerateSecret: false # SPA: sin client secret
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      AccessTokenValidity: 60 # minutos
+      IdTokenValidity: 60
+      RefreshTokenValidity: 30 # días
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: admin
+      UserPoolId: !Ref UserPool
+      Description: Acceso CRUD completo.
+
+  GerenteGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: gerente
+      UserPoolId: !Ref UserPool
+      Description: Acceso de solo lectura.
+
+  # ───────────────────────────────────────────────────────────
+  # LOGS — Retención corta para no acumular costo
+  # ───────────────────────────────────────────────────────────
+  ApiFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/rockality-${Stage}-api'
+      RetentionInDays: 14
+
+  # ───────────────────────────────────────────────────────────
+  # API — Lambda (Express) + API Gateway con Cognito Authorizer
+  # ───────────────────────────────────────────────────────────
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Stage
+      CorsConfiguration:
+        AllowOrigins: [!Ref AllowedOrigins]
+        AllowHeaders: [Content-Type, Authorization]
+        AllowMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+      # Throttling para evitar facturas sorpresa
+      DefaultRouteSettings:
+        ThrottlingRateLimit: 100
+        ThrottlingBurstLimit: 50
+      Auth:
+        Authorizers:
+          CognitoAuth:
+            IdentitySource: '$request.header.Authorization'
+            JwtConfiguration:
+              issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}'
+              audience: [!Ref UserPoolClient]
+        # Por defecto exigimos JWT; el health check se abre explícitamente
+        DefaultAuthorizer: CognitoAuth
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'rockality-${Stage}-api'
+      Handler: dist/handler.handler
+      CodeUri: ../backend/
+      ReservedConcurrentExecutions: 1 # SQLite: una sola instancia a la vez
+      VpcConfig:
+        SecurityGroupIds: [!Ref LambdaSecurityGroup]
+        SubnetIds: [!Ref PrivateSubnet1, !Ref PrivateSubnet2]
+      FileSystemConfigs:
+        - Arn: !GetAtt AccessPoint.Arn
+          LocalMountPath: /mnt/data
+      Environment:
+        Variables:
+          NODE_ENV: production
+          DB_PATH: /mnt/data/prod.db
+          ALLOWED_ORIGINS: !Ref AllowedOrigins
+          ENCRYPTION_KEY_SECRET_ARN: !Ref EncryptionKeySecret
+          COGNITO_USER_POOL_ID: !Ref UserPool
+          COGNITO_CLIENT_ID: !Ref UserPoolClient
+          COGNITO_REGION: !Ref AWS::Region
+      Policies:
+        - Statement:
+            - Sid: LeerSecretoDeCifrado
+              Effect: Allow
+              Action: [secretsmanager:GetSecretValue]
+              Resource: !Ref EncryptionKeySecret
+        - Statement:
+            - Sid: MontarEFS
+              Effect: Allow
+              Action:
+                - elasticfilesystem:ClientMount
+                - elasticfilesystem:ClientWrite
+              Resource: !GetAtt FileSystem.Arn
+      Events:
+        HealthPublic:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /api/health
+            Method: GET
+            Auth:
+              Authorizer: NONE # health check público
+        ApiProxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /{proxy+}
+            Method: ANY
+    DependsOn:
+      - MountTarget1
+      - MountTarget2
+
+  # ───────────────────────────────────────────────────────────
+  # FRONTEND — S3 privado + CloudFront (OAC)
+  # ───────────────────────────────────────────────────────────
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'rockality-${Stage}-frontend-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub 'rockality-${Stage}-oac'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_100 # solo NA/EU: más barato
+        Origins:
+          - Id: S3Frontend
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            OriginAccessControlId: !Ref CloudFrontOAC
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        DefaultCacheBehavior:
+          TargetOriginId: S3Frontend
+          ViewerProtocolPolicy: redirect-to-https # HTTPS obligatorio
+          # Managed policy "CachingOptimized"
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          AllowedMethods: [GET, HEAD, OPTIONS]
+        # SPA: rutas de React devuelven index.html
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true # TLS del dominio *.cloudfront.net
+        Restrictions:
+          GeoRestriction:
+            RestrictionType: none
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}'
+
+  # ───────────────────────────────────────────────────────────
+  # COSTOS — Budget con alertas al 50% y 100% de USD 10/mes
+  # ───────────────────────────────────────────────────────────
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: !Sub 'rockality-${Stage}-budget'
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: 10
+          Unit: USD
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 50
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref BudgetEmail
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref BudgetEmail
+
+# BudgetEmail se declara aparte para no olvidarlo
+Outputs:
+  ApiUrl:
+    Description: URL base del API (API Gateway)
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}'
+  CloudFrontUrl:
+    Description: URL del frontend (CloudFront)
+    Value: !Sub 'https://${Distribution.DomainName}'
+  FrontendBucketName:
+    Description: Bucket S3 del frontend (para subir el build)
+    Value: !Ref FrontendBucket
+  UserPoolId:
+    Description: Cognito User Pool ID (para VITE_COGNITO_USER_POOL_ID)
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Description: Cognito App Client ID (para VITE_COGNITO_CLIENT_ID)
+    Value: !Ref UserPoolClient
+  EncryptionKeySecretArn:
+    Description: ARN del secreto con la clave de cifrado
+    Value: !Ref EncryptionKeySecret
