@@ -146,6 +146,7 @@ export default function Terceros() {
         <button
           onClick={showForm ? cerrarForm : abrirCrear}
           className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+          title={showForm ? 'Cerrar el formulario' : 'Crear un nuevo tercero'}
         >
           {showForm ? 'Cancelar' : '+ Nuevo tercero'}
         </button>
@@ -236,6 +237,7 @@ export default function Terceros() {
             <button
               type="submit"
               className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+              title={editando ? 'Guardar los cambios del tercero' : 'Guardar el nuevo tercero'}
             >
               {editando ? 'Actualizar' : 'Guardar'}
             </button>

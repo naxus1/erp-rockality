@@ -147,12 +147,14 @@ export default function Planes() {
         <button
           onClick={() => setTab('planes')}
           className={`pb-2 text-sm font-medium ${tab === 'planes' ? 'border-b-2 border-gray-900 text-gray-900' : 'text-gray-500'}`}
+          title="Ver los planes de entrenamiento"
         >
           Planes
         </button>
         <button
           onClick={() => setTab('suscripciones')}
           className={`pb-2 text-sm font-medium ${tab === 'suscripciones' ? 'border-b-2 border-gray-900 text-gray-900' : 'text-gray-500'}`}
+          title="Ver las suscripciones activas"
         >
           Suscripciones activas ({suscripciones.length})
         </button>
@@ -169,6 +171,7 @@ export default function Planes() {
             <button
               onClick={showForm ? cerrarForm : abrirCrear}
               className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+              title={showForm ? 'Cerrar el formulario' : 'Crear un nuevo plan'}
             >
               {showForm ? 'Cancelar' : '+ Nuevo plan'}
             </button>
@@ -260,6 +263,7 @@ export default function Planes() {
                 <button
                   type="submit"
                   className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+                  title={editando ? 'Guardar los cambios del plan' : 'Guardar el nuevo plan'}
                 >
                   {editando ? 'Actualizar' : 'Guardar'}
                 </button>

@@ -180,6 +180,7 @@ export default function Gastos() {
               setSuccess('');
             }}
             className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+            title="Registrar un nuevo gasto"
           >
             + Registrar gasto
           </button>
@@ -283,6 +284,7 @@ export default function Gastos() {
         <button
           onClick={() => setVista('lista')}
           className="text-sm text-gray-500 hover:text-gray-800"
+          title="Volver a la lista de gastos"
         >
           ← Volver
         </button>
@@ -471,6 +473,7 @@ export default function Gastos() {
           <button
             type="submit"
             className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+            title="Guardar y registrar el gasto"
           >
             Registrar gasto
           </button>

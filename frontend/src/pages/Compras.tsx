@@ -185,6 +185,7 @@ export default function Compras() {
               setSuccess('');
             }}
             className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+            title="Registrar una nueva compra"
           >
             + Nueva compra
           </button>
@@ -272,6 +273,7 @@ export default function Compras() {
         <button
           onClick={() => setVista('lista')}
           className="text-sm text-gray-500 hover:text-gray-800"
+          title="Volver a la lista de compras"
         >
           ← Volver
         </button>
@@ -357,7 +359,11 @@ export default function Compras() {
                         {formatCOP(item.precio_unitario * item.cantidad)}
                       </td>
                       <td className="py-1.5 text-right">
-                        <button onClick={() => quitarItem(idx)} className="text-red-500 text-xs">
+                        <button
+                          onClick={() => quitarItem(idx)}
+                          className="text-red-500 text-xs"
+                          title="Quitar producto"
+                        >
                           ✕
                         </button>
                       </td>
@@ -444,6 +450,7 @@ export default function Compras() {
             onClick={registrarCompra}
             disabled={items.length === 0 || !terceroNit}
             className="w-full bg-gray-900 text-white py-2.5 rounded text-sm font-medium disabled:bg-gray-400"
+            title="Guardar y registrar la compra"
           >
             Registrar compra
           </button>

@@ -313,6 +313,7 @@ export default function Ventas() {
               setSuccess('');
             }}
             className="text-sm text-gray-500 hover:text-gray-800"
+            title="Volver a la lista de ventas"
           >
             ← Volver
           </button>
@@ -489,6 +490,7 @@ export default function Ventas() {
                   <button
                     onClick={registrarPago}
                     className="w-full bg-gray-900 text-white py-1.5 rounded text-sm"
+                    title="Registrar abono o pago de la venta"
                   >
                     Registrar pago
                   </button>
@@ -501,6 +503,7 @@ export default function Ventas() {
               <button
                 onClick={() => anularVenta(ventaDetalle.id)}
                 className="w-full border border-red-300 text-red-600 py-1.5 rounded text-sm hover:bg-red-50"
+                title="Anular esta venta"
               >
                 Anular venta
               </button>
@@ -524,6 +527,7 @@ export default function Ventas() {
               setSuccess('');
             }}
             className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+            title="Registrar una nueva venta"
           >
             + Nueva venta
           </button>
@@ -562,6 +566,7 @@ export default function Ventas() {
                 setFiltroTipo('');
               }}
               className="text-xs text-gray-500 hover:text-gray-800"
+              title="Quitar todos los filtros"
             >
               Limpiar filtros
             </button>
@@ -690,6 +695,7 @@ export default function Ventas() {
         <button
           onClick={() => setVista('lista')}
           className="text-sm text-gray-500 hover:text-gray-800"
+          title="Volver a la lista de ventas"
         >
           ← Volver
         </button>
@@ -717,6 +723,7 @@ export default function Ventas() {
                     setBusquedaCliente('');
                   }}
                   className="text-xs text-red-500"
+                  title="Quitar cliente seleccionado"
                 >
                   ✕
                 </button>
@@ -733,6 +740,7 @@ export default function Ventas() {
                       setClientes([]);
                     }}
                     className="block w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100"
+                    title="Seleccionar este cliente"
                   >
                     {c.nombre} {c.apellidos} — {c.cedula}
                   </button>
@@ -815,7 +823,11 @@ export default function Ventas() {
                         {formatCOP(item.precio_unitario * item.cantidad)}
                       </td>
                       <td className="py-1.5 text-right">
-                        <button onClick={() => quitarItem(idx)} className="text-red-500 text-xs">
+                        <button
+                          onClick={() => quitarItem(idx)}
+                          className="text-red-500 text-xs"
+                          title="Quitar producto"
+                        >
                           ✕
                         </button>
                       </td>
@@ -887,6 +899,7 @@ export default function Ventas() {
             onClick={registrarVenta}
             disabled={items.length === 0}
             className="w-full bg-gray-900 text-white py-2.5 rounded text-sm font-medium disabled:bg-gray-400"
+            title="Guardar y registrar la venta"
           >
             Registrar venta
           </button>

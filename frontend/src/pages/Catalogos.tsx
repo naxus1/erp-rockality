@@ -133,6 +133,7 @@ export default function Catalogos() {
               key={cat.key}
               onClick={() => setSelected(cat)}
               className={`block w-full text-left px-3 py-1.5 rounded text-sm ${selected.key === cat.key ? 'bg-gray-900 text-white' : 'hover:bg-gray-100'}`}
+              title={`Ver el catálogo de ${cat.label}`}
             >
               {cat.label}
             </button>
@@ -161,6 +162,7 @@ export default function Catalogos() {
             <button
               onClick={agregar}
               className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+              title="Agregar un nuevo elemento al catálogo"
             >
               Agregar
             </button>
@@ -198,12 +200,17 @@ export default function Catalogos() {
                               className="flex-1 border border-gray-300 rounded px-2 py-0.5 text-sm"
                               autoFocus
                             />
-                            <button onClick={guardarEdicion} className="text-xs text-green-600">
+                            <button
+                              onClick={guardarEdicion}
+                              className="text-xs text-green-600"
+                              title="Guardar cambios"
+                            >
                               ✓
                             </button>
                             <button
                               onClick={() => setEditandoId(null)}
                               className="text-xs text-gray-400"
+                              title="Cancelar edición"
                             >
                               ✕
                             </button>

@@ -229,6 +229,7 @@ export default function Productos() {
         <button
           onClick={showForm ? cerrarForm : abrirCrear}
           className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+          title={showForm ? 'Cerrar el formulario' : 'Crear un nuevo producto'}
         >
           {showForm ? 'Cancelar' : '+ Nuevo producto'}
         </button>
@@ -414,6 +415,7 @@ export default function Productos() {
             <button
               type="submit"
               className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
+              title={editando ? 'Guardar los cambios del producto' : 'Guardar el nuevo producto'}
             >
               {editando ? 'Actualizar' : 'Guardar'}
             </button>
@@ -451,6 +453,7 @@ export default function Productos() {
               setFiltroStock('');
             }}
             className="text-xs text-gray-500 hover:text-gray-800"
+            title="Quitar los filtros aplicados"
           >
             Limpiar
           </button>
