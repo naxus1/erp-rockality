@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CI/CD — OIDC provider de GitHub + IAM Role que GitHub Actions asume (sin llaves
+  permanentes) para desplegar el ERP Rockality. Stack separado del de la app.
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Default: naxus1
+  GitHubRepo:
+    Type: String
+    Default: erp-rockality
+  DeployBranch:
+    Type: String
+    Default: main
+    Description: Solo esta rama puede desplegar.
+
+Resources:
+  # Proveedor OIDC de GitHub Actions (uno por cuenta)
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      # GitHub rota su cert; AWS ya no valida thumbprint para este provider,
+      # pero el campo es obligatorio. Se usa el thumbprint publico conocido.
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+
+  # Rol que asume GitHub Actions al desplegar (confianza restringida al repo+rama)
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: rockality-github-deploy
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !GetAtt GitHubOIDCProvider.Arn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                # Solo el repo y la rama indicados pueden asumir el rol
+                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/${DeployBranch}'
+      # Permisos de despliegue. Amplio pero acotado a lo que usa el stack de la app.
+      # (Para máxima granularidad se puede restringir por recurso más adelante.)
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/CloudFrontFullAccess
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+        - arn:aws:iam::aws:policy/AmazonCognitoPowerUser
+        - arn:aws:iam::aws:policy/AmazonElasticFileSystemFullAccess
+        - arn:aws:iam::aws:policy/AmazonVPCFullAccess
+        - arn:aws:iam::aws:policy/SecretsManagerReadWrite
+      Policies:
+        - PolicyName: extras-deploy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: IamParaSAM
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:PassRole
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                Resource: '*'
+              - Sid: Budgets
+                Effect: Allow
+                Action:
+                  - budgets:*
+                Resource: '*'
+
+Outputs:
+  DeployRoleArn:
+    Description: ARN del rol para GitHub Actions (secret AWS_DEPLOY_ROLE_ARN)
+    Value: !GetAtt DeployRole.Arn
