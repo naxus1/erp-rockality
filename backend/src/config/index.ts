@@ -18,10 +18,16 @@ const isProduction = process.env.NODE_ENV === 'production';
 // bloquear el arranque local; en producción es OBLIGATORIA (fail-fast).
 const DEV_ENCRYPTION_KEY = 'dev-only-insecure-key-change-me-32bytes!!';
 const encryptionKey = process.env.ENCRYPTION_KEY || (isProduction ? '' : DEV_ENCRYPTION_KEY);
+// ARN del secreto con la clave de cifrado. Si está seteado, la clave se resuelve
+// de forma asíncrona al arrancar (loadEncryptionKey), por lo que NO es necesario
+// tener ENCRYPTION_KEY en el entorno.
+const encryptionKeySecretArn = process.env.ENCRYPTION_KEY_SECRET_ARN || '';
 
-if (isProduction && !encryptionKey) {
+// Fail-fast: en producción debe haber una fuente para la clave de cifrado, ya
+// sea la env var directa o el ARN del secreto (que se resuelve al arrancar).
+if (isProduction && !encryptionKey && !encryptionKeySecretArn) {
   throw new Error(
-    'ENCRYPTION_KEY es obligatoria en producción. Configúrala en el entorno (AWS Secrets Manager).',
+    'ENCRYPTION_KEY (o ENCRYPTION_KEY_SECRET_ARN) es obligatoria en producción. Configúrala en el entorno (AWS Secrets Manager).',
   );
 }
 
@@ -48,7 +54,7 @@ export const config = {
   encryptionKey,
   // ARN del secreto en AWS Secrets Manager con la clave de cifrado (producción).
   // Si está seteado, se resuelve al arrancar y tiene prioridad sobre encryptionKey.
-  encryptionKeySecretArn: process.env.ENCRYPTION_KEY_SECRET_ARN || '',
+  encryptionKeySecretArn,
   cognito: {
     userPoolId: cognitoUserPoolId,
     clientId: cognitoClientId,
