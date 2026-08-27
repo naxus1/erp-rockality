@@ -238,6 +238,7 @@ Resources:
       FunctionName: !Sub 'rockality-${Stage}-api'
       Handler: dist/handler.handler
       CodeUri: ../backend/
+      Architectures: [arm64] # Graviton: mas barato y evita cross-build en Mac ARM
       ReservedConcurrentExecutions: 1 # SQLite: una sola instancia a la vez
       VpcConfig:
         SecurityGroupIds: [!Ref LambdaSecurityGroup]
