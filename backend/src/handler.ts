@@ -15,6 +15,30 @@
  */
 import serverlessExpress from '@vendia/serverless-express';
 import app from './app.js';
+import { initDatabase } from './db/init.js';
+import { loadEncryptionKey } from './utils/crypto.js';
 
-// Crea el handler de Lambda a partir de la app Express
-export const handler = serverlessExpress({ app });
+// Inicialización perezosa en el arranque en frío (cold start): resuelve la clave
+// de cifrado desde Secrets Manager y aplica migraciones sobre la DB en EFS.
+let ready: Promise<void> | null = null;
+async function bootstrap(): Promise<void> {
+  await loadEncryptionKey();
+  initDatabase();
+}
+
+const serverlessHandler = serverlessExpress({ app });
+
+export const handler = async (
+  event: unknown,
+  context: unknown,
+  callback: unknown,
+): Promise<unknown> => {
+  if (!ready) ready = bootstrap();
+  await ready;
+  // serverless-express acepta (event, context, callback)
+  return (serverlessHandler as (e: unknown, c: unknown, cb: unknown) => unknown)(
+    event,
+    context,
+    callback,
+  );
+};
