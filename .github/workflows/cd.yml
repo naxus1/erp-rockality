@@ -16,9 +16,7 @@ on:
     branches: [main]
   workflow_dispatch: {} # permite lanzarlo a mano desde la pestaña Actions
 
-# OIDC requiere id-token: write
 permissions:
-  id-token: write
   contents: read
 
 env:
@@ -54,11 +52,12 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      # Credenciales temporales vía OIDC (sin secrets de larga duración)
-      - name: Configurar credenciales AWS (OIDC)
+      # Credenciales del usuario IAM de deploy (GitHub Secrets)
+      - name: Configurar credenciales AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       # ── Backend + infraestructura ──
