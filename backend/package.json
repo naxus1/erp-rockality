@@ -2,12 +2,12 @@
   "name": "@erp-rockality/backend",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "Backend API del ERP Rockality — Node.js + Express + SQLite",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsc && npm run copy-assets",
+    "copy-assets": "mkdir -p dist/db/migrations && cp src/db/migrations/*.sql dist/db/migrations/",
     "start": "node dist/index.js",
     "lint": "eslint src/",
     "test": "vitest run",
@@ -31,6 +31,7 @@
     "@types/express": "^5.0.0",
     "@types/morgan": "^1.9.0",
     "@types/node": "^22.20.1",
+    "esbuild": "^0.28.2",
     "tsx": "^4.19.0",
     "vitest": "^3.1.0"
   }
