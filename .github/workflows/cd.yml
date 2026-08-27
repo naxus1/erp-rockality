@@ -30,7 +30,9 @@ env:
 jobs:
   deploy:
     name: Deploy a AWS
-    runs-on: ubuntu-latest
+    # Runner arm64 nativo: coincide con la Lambda (arm64) y compila better-sqlite3
+    # sin emulación QEMU (que hacía el sam build --use-container lentísimo).
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
