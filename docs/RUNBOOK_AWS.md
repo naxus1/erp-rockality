@@ -116,6 +116,37 @@ aws cloudfront create-invalidation --distribution-id E11ILNTFPG49JV \
   --paths "/*" --profile rockality
 ```
 
+## CI/CD automático (deploy sin intervención)
+
+A partir de ahora, **cada merge a `main` despliega solo** vía GitHub Actions. Ya no
+hace falta correr `sam deploy` ni subir el frontend a mano.
+
+- **Workflow**: `.github/workflows/cd.yml` (se dispara en push a `main`; también
+  manual desde la pestaña Actions con "Run workflow").
+- **Autenticación**: **OIDC** — GitHub asume un rol IAM temporal, sin llaves
+  permanentes guardadas.
+  - OIDC provider + rol IAM: definidos en `infra/cicd.yaml` (stack `rockality-cicd`).
+  - Rol: `rockality-github-deploy`. Su ARN está en el GitHub Secret `AWS_DEPLOY_ROLE_ARN`.
+  - La confianza está restringida a `repo:naxus1/erp-rockality:ref:refs/heads/main`
+    (solo la rama main puede desplegar).
+- **Qué hace el pipeline**: build backend -> `sam build --use-container` ->
+  `sam deploy` -> build frontend -> `s3 sync` -> invalidación CloudFront ->
+  health check.
+
+Recrear/actualizar el stack de CI/CD (si se cambia el repo, rama o permisos):
+
+```bash
+aws cloudformation deploy --template-file infra/cicd.yaml \
+  --stack-name rockality-cicd --capabilities CAPABILITY_NAMED_IAM \
+  --region us-east-1 --profile rockality
+# El ARN del rol (output DeployRoleArn) va en el secret AWS_DEPLOY_ROLE_ARN:
+gh secret set AWS_DEPLOY_ROLE_ARN --body "<DeployRoleArn>"
+```
+
+> Para replicar este CI/CD en otro proyecto (p. ej. oil & gas): copia `infra/cicd.yaml`
+> (cambiando repo/rama) y `.github/workflows/cd.yml` (ajustando los `env`). El patrón
+> OIDC evita manejar access keys.
+
 ## Ver logs de la Lambda
 
 ```bash
