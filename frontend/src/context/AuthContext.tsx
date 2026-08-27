@@ -1,5 +1,6 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
+import { CognitoUserPool, CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
 
 export type UserRole = 'admin' | 'gerente' | 'vendedor';
 
@@ -18,9 +19,47 @@ interface AuthContextType {
 }
 
 // ¿Está Cognito configurado? (variables de entorno de Vite)
-const COGNITO_CONFIGURED = Boolean(
-  import.meta.env.VITE_COGNITO_USER_POOL_ID && import.meta.env.VITE_COGNITO_CLIENT_ID,
-);
+const COGNITO_USER_POOL_ID = import.meta.env.VITE_COGNITO_USER_POOL_ID as string | undefined;
+const COGNITO_CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID as string | undefined;
+const COGNITO_CONFIGURED = Boolean(COGNITO_USER_POOL_ID && COGNITO_CLIENT_ID);
+
+const userPool = COGNITO_CONFIGURED
+  ? new CognitoUserPool({ UserPoolId: COGNITO_USER_POOL_ID!, ClientId: COGNITO_CLIENT_ID! })
+  : null;
+
+// Deriva el rol desde los grupos de Cognito (claim cognito:groups)
+function rolDesdeToken(payload: Record<string, unknown>): UserRole {
+  const grupos = (payload['cognito:groups'] as string[]) || [];
+  if (grupos.includes('admin')) return 'admin';
+  if (grupos.includes('gerente')) return 'gerente';
+  return 'vendedor';
+}
+
+// Login real contra Cognito: devuelve el user + guarda el idToken.
+function loginCognito(email: string, password: string): Promise<{ token: string; user: User }> {
+  return new Promise((resolve, reject) => {
+    const cognitoUser = new CognitoUser({ Username: email, Pool: userPool! });
+    const authDetails = new AuthenticationDetails({ Username: email, Password: password });
+    cognitoUser.authenticateUser(authDetails, {
+      onSuccess: (session) => {
+        const idToken = session.getIdToken();
+        const payload = idToken.decodePayload() as Record<string, unknown>;
+        resolve({
+          token: idToken.getJwtToken(),
+          user: {
+            id: String(payload['cognito:username'] || payload.sub),
+            nombre: (payload.email as string) || email,
+            email: (payload.email as string) || email,
+            rol: rolDesdeToken(payload),
+          },
+        });
+      },
+      onFailure: (err) => reject(err),
+      newPasswordRequired: () =>
+        reject(new Error('Debes cambiar la contraseña temporal antes de iniciar sesión.')),
+    });
+  });
+}
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -53,10 +92,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     if (COGNITO_CONFIGURED) {
-      // Producción: login contra Cognito. La integración con Amplify/SDK se
-      // conecta aquí; debe obtener el idToken, guardarlo en 'erp_token' y
-      // poblar el user desde los claims. (Pendiente al configurar el User Pool.)
-      throw new Error('Login con Cognito aún no configurado en este entorno.');
+      // Producción: login real contra Cognito. Guarda el idToken (lo usa api.ts
+      // en el header Authorization) y puebla el user desde los claims del token.
+      const { token, user: u } = await loginCognito(username, password);
+      setUser(u);
+      localStorage.setItem('erp_user', JSON.stringify(u));
+      localStorage.setItem('erp_token', token);
+      return true;
     }
 
     // Desarrollo: login local (mock) mientras no exista Cognito.
