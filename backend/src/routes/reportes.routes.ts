@@ -34,12 +34,34 @@ router.get('/dashboard', (_req: Request, res: Response) => {
     .prepare("SELECT COUNT(*) as count FROM suscripciones WHERE estado = 'activa'")
     .get() as { count: number };
 
-  // Por vencer (7 días)
+  // Por vencer (7 días) — contador
   const porVencer = db
     .prepare(
       "SELECT COUNT(*) as count FROM suscripciones WHERE estado = 'activa' AND julianday(fecha_fin) - julianday('now') BETWEEN 0 AND 7",
     )
     .get() as { count: number };
+
+  // Por vencer (7 días) — detalle (quiénes, qué plan, cuándo vence)
+  const porVencerDetalle = db
+    .prepare(
+      `SELECT s.id, s.cliente_cedula, c.nombre, c.apellidos, p.nombre as plan_nombre,
+         s.fecha_fin,
+         CAST(julianday(s.fecha_fin) - julianday('now') AS INTEGER) as dias_restantes
+       FROM suscripciones s
+       LEFT JOIN clientes c ON s.cliente_cedula = c.cedula
+       LEFT JOIN planes p ON s.plan_id = p.id
+       WHERE s.estado = 'activa' AND julianday(s.fecha_fin) - julianday('now') BETWEEN 0 AND 7
+       ORDER BY s.fecha_fin ASC`,
+    )
+    .all() as Array<{
+    id: number;
+    cliente_cedula: string | null;
+    nombre: string | null;
+    apellidos: string | null;
+    plan_nombre: string | null;
+    fecha_fin: string;
+    dias_restantes: number;
+  }>;
 
   // Clientes nuevos este mes
   const clientesNuevos = db
@@ -101,6 +123,13 @@ router.get('/dashboard', (_req: Request, res: Response) => {
       margen,
       suscripciones_activas: suscActivas.count,
       suscripciones_por_vencer: porVencer.count,
+      suscripciones_por_vencer_detalle: porVencerDetalle.map((s) => ({
+        id: s.id,
+        cliente: s.nombre ? `${s.nombre} ${s.apellidos}` : 'Sin cliente',
+        plan: s.plan_nombre || '-',
+        fecha_fin: s.fecha_fin,
+        dias_restantes: s.dias_restantes,
+      })),
       clientes_nuevos_mes: clientesNuevos.count,
       ventas_pendientes: {
         count: pendientes.count,

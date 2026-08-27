@@ -9,6 +9,13 @@ interface DashboardData {
   margen: number;
   suscripciones_activas: number;
   suscripciones_por_vencer: number;
+  suscripciones_por_vencer_detalle: Array<{
+    id: number;
+    cliente: string;
+    plan: string;
+    fecha_fin: string;
+    dias_restantes: number;
+  }>;
   clientes_nuevos_mes: number;
   ventas_pendientes: {
     count: number;
@@ -112,10 +119,30 @@ export default function Dashboard() {
         data.ventas_pendientes.count > 0) && (
         <div className="grid grid-cols-3 gap-3 mb-5">
           {data.suscripciones_por_vencer > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-              <p className="text-xs font-medium text-amber-800">
+            <div
+              className="bg-amber-50 border border-amber-200 rounded-xl p-3 cursor-pointer hover:bg-amber-100 transition-colors"
+              onClick={() => navigate('/planes?tab=suscripciones')}
+              title="Ver las suscripciones por vencer"
+            >
+              <p className="text-xs font-medium text-amber-800 mb-1">
                 ⚠ {data.suscripciones_por_vencer} suscripción(es) por vencer en 7 días
               </p>
+              <ul className="text-xs text-amber-700 space-y-0.5">
+                {data.suscripciones_por_vencer_detalle.slice(0, 5).map((s) => (
+                  <li key={s.id}>
+                    • {s.cliente} — {s.plan} (
+                    {s.dias_restantes <= 0
+                      ? 'vence hoy'
+                      : `${s.dias_restantes} día${s.dias_restantes === 1 ? '' : 's'}`}
+                    )
+                  </li>
+                ))}
+                {data.suscripciones_por_vencer > 5 && (
+                  <li className="text-amber-600 font-medium">
+                    y {data.suscripciones_por_vencer - 5} más…
+                  </li>
+                )}
+              </ul>
             </div>
           )}
           {data.stock_bajo > 0 && (
@@ -135,11 +162,16 @@ export default function Dashboard() {
                 {formatCOP(data.ventas_pendientes.saldo)} por cobrar
               </p>
               <ul className="text-xs text-rose-700 space-y-0.5">
-                {data.ventas_pendientes.deudores.map((d) => (
+                {data.ventas_pendientes.deudores.slice(0, 5).map((d) => (
                   <li key={d.venta_id}>
                     • {d.cliente} — debe {formatCOP(d.saldo)}
                   </li>
                 ))}
+                {data.ventas_pendientes.count > 5 && (
+                  <li className="text-rose-600 font-medium">
+                    y {data.ventas_pendientes.count - 5} más…
+                  </li>
+                )}
               </ul>
             </div>
           )}
