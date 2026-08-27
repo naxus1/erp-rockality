@@ -93,6 +93,32 @@ Resources:
       Tags:
         - { Key: Name, Value: !Sub 'rockality-${Stage}-sg-efs' }
 
+  # SG del VPC Endpoint: acepta HTTPS (443) desde la Lambda
+  VpcEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SG de los VPC endpoints (Secrets Manager)
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      Tags:
+        - { Key: Name, Value: !Sub 'rockality-${Stage}-sg-vpce' }
+
+  # VPC Endpoint (interface) para Secrets Manager: la Lambda (sin internet)
+  # puede leer el secreto de cifrado de forma privada.
+  SecretsManagerEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds: [!Ref PrivateSubnet1, !Ref PrivateSubnet2]
+      SecurityGroupIds: [!Ref VpcEndpointSecurityGroup]
+
   # ───────────────────────────────────────────────────────────
   # EFS — Almacenamiento de la base SQLite (cifrado en reposo)
   # ───────────────────────────────────────────────────────────
@@ -157,7 +183,9 @@ Resources:
         AllowAdminCreateUserOnly: true # self-signup DESHABILITADO
       AutoVerifiedAttributes: [email]
       UsernameAttributes: [email]
+      # MFA opcional por app autenticadora (TOTP). Sin SMS (evita config y costo).
       MfaConfiguration: 'OPTIONAL'
+      EnabledMfas: [SOFTWARE_TOKEN_MFA]
       Policies:
         PasswordPolicy:
           MinimumLength: 12
@@ -213,7 +241,8 @@ Resources:
   HttpApi:
     Type: AWS::Serverless::HttpApi
     Properties:
-      StageName: !Ref Stage
+      # $default: sin prefijo de stage en el path (Express recibe /api/... limpio)
+      StageName: $default
       CorsConfiguration:
         AllowOrigins: [!Ref AllowedOrigins]
         AllowHeaders: [Content-Type, Authorization]
@@ -239,7 +268,11 @@ Resources:
       Handler: dist/handler.handler
       CodeUri: ../backend/
       Architectures: [arm64] # Graviton: mas barato y evita cross-build en Mac ARM
-      ReservedConcurrentExecutions: 1 # SQLite: una sola instancia a la vez
+      # NOTA: idealmente ReservedConcurrentExecutions=1 para SQLite (una instancia
+      # a la vez). Las cuentas nuevas exigen dejar >=10 de concurrencia sin reservar,
+      # asi que se omite por ahora. Con 2-10 usuarios el riesgo de escritura
+      # concurrente es minimo. Solicitar aumento de limite para reactivarlo, o
+      # migrar a Postgres si el uso crece.
       VpcConfig:
         SecurityGroupIds: [!Ref LambdaSecurityGroup]
         SubnetIds: [!Ref PrivateSubnet1, !Ref PrivateSubnet2]
@@ -396,8 +429,8 @@ Resources:
 # BudgetEmail se declara aparte para no olvidarlo
 Outputs:
   ApiUrl:
-    Description: URL base del API (API Gateway)
-    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}'
+    Description: URL base del API (API Gateway, stage $default sin prefijo)
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
   CloudFrontUrl:
     Description: URL del frontend (CloudFront)
     Value: !Sub 'https://${Distribution.DomainName}'
