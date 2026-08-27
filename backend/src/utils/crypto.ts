@@ -87,8 +87,8 @@ export function decrypt(value: string | null | undefined): string | null {
   if (!isEncrypted(value)) return value; // texto plano heredado
 
   const parts = value.slice(PREFIX.length).split(':');
-  if (parts.length !== 3) return value; // formato inesperado, no rompemos
   const [ivHex, tagHex, dataHex] = parts;
+  if (!ivHex || !tagHex || !dataHex) return value; // formato inesperado, no rompemos
 
   try {
     const key = getKey();

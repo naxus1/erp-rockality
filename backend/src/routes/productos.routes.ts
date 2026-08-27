@@ -26,7 +26,8 @@ router.get('/categoria/:categoriaId', (req: Request, res: Response) => {
 
 // GET /api/productos/:sku — Obtener uno por SKU
 router.get('/:sku', (req: Request, res: Response) => {
-  const producto = repo.findBySku(req.params.sku);
+  const sku = typeof req.params.sku === 'string' ? req.params.sku : '';
+  const producto = repo.findBySku(sku);
   if (!producto) {
     res.status(404).json({ success: false, error: 'Producto no encontrado' });
     return;
@@ -54,7 +55,8 @@ router.post('/', validate(createProductoSchema), (req: Request, res: Response) =
 
 // PUT /api/productos/:sku — Editar
 router.put('/:sku', validate(updateProductoSchema), (req: Request, res: Response) => {
-  const producto = repo.update(req.params.sku, req.body);
+  const sku = typeof req.params.sku === 'string' ? req.params.sku : '';
+  const producto = repo.update(sku, req.body);
   if (!producto) {
     res.status(404).json({ success: false, error: 'Producto no encontrado' });
     return;
@@ -64,7 +66,8 @@ router.put('/:sku', validate(updateProductoSchema), (req: Request, res: Response
 
 // DELETE /api/productos/:sku — Desactivar (soft delete)
 router.delete('/:sku', (req: Request, res: Response) => {
-  const deleted = repo.deactivate(req.params.sku);
+  const sku = typeof req.params.sku === 'string' ? req.params.sku : '';
+  const deleted = repo.deactivate(sku);
   if (!deleted) {
     res.status(404).json({ success: false, error: 'Producto no encontrado' });
     return;

@@ -25,10 +25,11 @@ const CATALOGOS: Record<string, { tabla: string; hasActivo?: boolean }> = {
 
 // GET /api/catalogos/:catalogo — Listar
 router.get('/:catalogo', (req: Request, res: Response) => {
-  const config = CATALOGOS[req.params.catalogo];
+  const catalogo = typeof req.params.catalogo === 'string' ? req.params.catalogo : '';
+  const config = CATALOGOS[catalogo];
   if (!config) {
     // Manejar planes aparte
-    if (req.params.catalogo === 'planes') {
+    if (catalogo === 'planes') {
       const db = getDatabase();
       const data = db.prepare('SELECT * FROM planes WHERE activo = 1 ORDER BY nombre').all();
       res.json({ success: true, data });
@@ -44,7 +45,8 @@ router.get('/:catalogo', (req: Request, res: Response) => {
 
 // POST /api/catalogos/:catalogo — Agregar item
 router.post('/:catalogo', (req: Request, res: Response) => {
-  const config = CATALOGOS[req.params.catalogo];
+  const catalogo = typeof req.params.catalogo === 'string' ? req.params.catalogo : '';
+  const config = CATALOGOS[catalogo];
   if (!config) {
     res.status(404).json({ success: false, error: 'Catálogo no encontrado' });
     return;
@@ -64,15 +66,14 @@ router.post('/:catalogo', (req: Request, res: Response) => {
       .get(Number(result.lastInsertRowid));
     res.status(201).json({ success: true, data: item });
   } catch {
-    res
-      .status(409)
-      .json({ success: false, error: `"${nombre}" ya existe en ${req.params.catalogo}` });
+    res.status(409).json({ success: false, error: `"${nombre}" ya existe en ${catalogo}` });
   }
 });
 
 // PUT /api/catalogos/:catalogo/:id — Editar nombre
 router.put('/:catalogo/:id', (req: Request, res: Response) => {
-  const config = CATALOGOS[req.params.catalogo];
+  const catalogo = typeof req.params.catalogo === 'string' ? req.params.catalogo : '';
+  const config = CATALOGOS[catalogo];
   if (!config) {
     res.status(404).json({ success: false, error: 'Catálogo no encontrado' });
     return;
@@ -112,7 +113,8 @@ router.put('/:catalogo/:id', (req: Request, res: Response) => {
 // agregar un sufijo "(inactivo)" al nombre para que no aparezca en selects normales.
 // Alternativa: no permitir desactivar catálogos base.
 router.delete('/:catalogo/:id', (req: Request, res: Response) => {
-  const config = CATALOGOS[req.params.catalogo];
+  const catalogo = typeof req.params.catalogo === 'string' ? req.params.catalogo : '';
+  const config = CATALOGOS[catalogo];
   if (!config) {
     res.status(404).json({ success: false, error: 'Catálogo no encontrado' });
     return;
@@ -141,7 +143,8 @@ router.delete('/:catalogo/:id', (req: Request, res: Response) => {
 
 // PATCH /api/catalogos/:catalogo/:id/activar — Reactivar un item inactivo
 router.patch('/:catalogo/:id/activar', (req: Request, res: Response) => {
-  const config = CATALOGOS[req.params.catalogo];
+  const catalogo = typeof req.params.catalogo === 'string' ? req.params.catalogo : '';
+  const config = CATALOGOS[catalogo];
   if (!config) {
     res.status(404).json({ success: false, error: 'Catálogo no encontrado' });
     return;
