@@ -75,7 +75,7 @@ Hoy cualquiera que llame a la API entra. Antes de exponerla:
 - **VPC** dedicada + 2 subnets privadas (2 AZs), **sin Internet/NAT Gateway** (ahorro de costo).
 - **EFS** con cifrado KMS + Access Point (`/data`, uid/gid 1000, permisos 0750).
 - **Security Groups**: SG-Lambda → SG-EFS (solo puerto NFS 2049).
-- **Lambda** (Node 20, 256 MB, timeout 30s, `ReservedConcurrentExecutions: 1`, VPC + EFS en `/mnt/data`).
+- **Lambda** (Node 22, 256 MB, timeout 30s, `ReservedConcurrentExecutions: 1`, VPC + EFS en `/mnt/data`).
 - **API Gateway (HTTP API)** con Cognito JWT Authorizer, throttling (100 rps / burst 50) y CORS restringido. `/api/health` queda público.
 - **Cognito** User Pool + App Client (self-signup off) + grupos `admin` y `gerente`.
 - **S3** (frontend) privado (Block Public Access) + acceso solo vía CloudFront (OAC).
