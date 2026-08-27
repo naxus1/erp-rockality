@@ -380,7 +380,7 @@ Resources:
         - Notification:
             NotificationType: ACTUAL
             ComparisonOperator: GREATER_THAN
-            Threshold: 50
+            Threshold: 70
           Subscribers:
             - SubscriptionType: EMAIL
               Address: !Ref BudgetEmail
