@@ -6,11 +6,7 @@
  */
 
 import path from 'path';
-import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Carga variables desde .env (en la raíz del backend). En producción las
 // variables las inyecta el entorno (AWS Secrets Manager / Lambda env).

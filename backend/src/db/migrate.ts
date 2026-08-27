@@ -14,12 +14,8 @@
  */
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 
 import { getDatabase, closeDatabase } from './connection.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 function runMigrations(): void {
   const db = getDatabase();
