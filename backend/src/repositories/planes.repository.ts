@@ -13,6 +13,7 @@ export interface Plan {
   porcentaje_iva: number;
   descripcion: string | null;
   activo: number;
+  motivo_inactivacion: string | null;
   created_at: string;
   created_by: string | null;
   updated_at: string;
@@ -39,6 +40,7 @@ export interface UpdatePlanData {
   porcentaje_iva?: number;
   descripcion?: string;
   activo?: number;
+  motivo_inactivacion?: string | null;
   updated_by?: string;
 }
 
@@ -78,9 +80,14 @@ export function update(id: number, data: UpdatePlanData): Plan | undefined {
   const current = findById(id);
   if (!current) return undefined;
 
+  // Si se reactiva el plan (activo pasa a 1), limpiamos el motivo de inactivación
+  const activoFinal = data.activo ?? current.activo;
+  const motivoFinal =
+    activoFinal === 1 ? null : (data.motivo_inactivacion ?? current.motivo_inactivacion);
+
   db.prepare(
     `UPDATE planes SET nombre = ?, modalidad = ?, duracion_dias = ?, precio = ?,
-     aplica_iva = ?, porcentaje_iva = ?, descripcion = ?, activo = ?,
+     aplica_iva = ?, porcentaje_iva = ?, descripcion = ?, activo = ?, motivo_inactivacion = ?,
      updated_at = datetime('now'), updated_by = ? WHERE id = ?`,
   ).run(
     data.nombre ?? current.nombre,
@@ -90,7 +97,8 @@ export function update(id: number, data: UpdatePlanData): Plan | undefined {
     data.aplica_iva ?? current.aplica_iva,
     data.porcentaje_iva ?? current.porcentaje_iva,
     data.descripcion ?? current.descripcion,
-    data.activo ?? current.activo,
+    activoFinal,
+    motivoFinal,
     data.updated_by || null,
     id,
   );

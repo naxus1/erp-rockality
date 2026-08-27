@@ -449,9 +449,12 @@ export default function Clientes() {
               type="text"
               value={form.notas_salud}
               onChange={(e) => setForm({ ...form, notas_salud: e.target.value })}
-              placeholder="Lesiones, restricciones..."
+              placeholder="Separa cada condición con comas. Ej: lesión de rodilla, hipertensión, asma"
               className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
+            <p className="text-[10px] text-gray-400 mt-1">
+              Separa cada problema de salud con una coma.
+            </p>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Instagram</label>
