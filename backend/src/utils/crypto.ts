@@ -23,9 +23,33 @@ import { config } from '../config/index.js';
 const PREFIX = 'enc:v1:';
 const ALGORITHM = 'aes-256-gcm';
 
-/** Deriva una clave de 32 bytes a partir de la ENCRYPTION_KEY configurada. */
+// Clave resuelta en tiempo de arranque. Si se cargó desde Secrets Manager,
+// tiene prioridad sobre config.encryptionKey (la env var).
+let resolvedKey: string | null = null;
+
+/**
+ * Carga la clave de cifrado desde AWS Secrets Manager si hay un ARN configurado.
+ * Debe llamarse UNA vez al arrancar (antes de atender requests). En desarrollo
+ * sin ARN, no hace nada y se usa config.encryptionKey (env var).
+ */
+export async function loadEncryptionKey(): Promise<void> {
+  if (!config.encryptionKeySecretArn) return; // dev / sin secret: usa env var
+  const { SecretsManagerClient, GetSecretValueCommand } = await import(
+    '@aws-sdk/client-secrets-manager'
+  );
+  const client = new SecretsManagerClient({ region: config.cognito.region });
+  const res = await client.send(
+    new GetSecretValueCommand({ SecretId: config.encryptionKeySecretArn }),
+  );
+  if (!res.SecretString) {
+    throw new Error('El secreto de cifrado está vacío en Secrets Manager.');
+  }
+  resolvedKey = res.SecretString;
+}
+
+/** Deriva una clave de 32 bytes a partir de la clave configurada/resuelta. */
 function getKey(): Buffer {
-  const raw = config.encryptionKey;
+  const raw = resolvedKey || config.encryptionKey;
   if (!raw) {
     throw new Error(
       'ENCRYPTION_KEY no está configurada. Es obligatoria para cifrar datos sensibles.',

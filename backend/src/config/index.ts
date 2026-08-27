@@ -50,6 +50,9 @@ export const config = {
   allowedOrigins: process.env.ALLOWED_ORIGINS || 'http://localhost:5173',
   isProduction,
   encryptionKey,
+  // ARN del secreto en AWS Secrets Manager con la clave de cifrado (producción).
+  // Si está seteado, se resuelve al arrancar y tiene prioridad sobre encryptionKey.
+  encryptionKeySecretArn: process.env.ENCRYPTION_KEY_SECRET_ARN || '',
   cognito: {
     userPoolId: cognitoUserPoolId,
     clientId: cognitoClientId,

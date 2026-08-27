@@ -9,12 +9,21 @@
 import app from './app.js';
 import { config } from './config/index.js';
 import { initDatabase } from './db/init.js';
+import { loadEncryptionKey } from './utils/crypto.js';
 
-// Inicializar DB (crear tablas si no existen)
-initDatabase();
+async function start(): Promise<void> {
+  // Resuelve la clave de cifrado (no-op en dev sin Secrets Manager) y crea tablas
+  await loadEncryptionKey();
+  initDatabase();
 
-app.listen(config.port, () => {
-  console.warn(`[ERP Rockality] Servidor corriendo en http://localhost:${config.port}`);
-  console.warn(`[ERP Rockality] Ambiente: ${config.nodeEnv}`);
-  console.warn(`[ERP Rockality] Health check: http://localhost:${config.port}/api/health`);
+  app.listen(config.port, () => {
+    console.warn(`[ERP Rockality] Servidor corriendo en http://localhost:${config.port}`);
+    console.warn(`[ERP Rockality] Ambiente: ${config.nodeEnv}`);
+    console.warn(`[ERP Rockality] Health check: http://localhost:${config.port}/api/health`);
+  });
+}
+
+start().catch((err) => {
+  console.error('[ERP Rockality] Error al arrancar:', err);
+  process.exit(1);
 });
