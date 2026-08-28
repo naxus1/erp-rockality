@@ -119,18 +119,32 @@ authorizer) -> Lambda (Express, arm64, en VPC privada sin internet) -> EFS (SQLi
 
 - **Síntoma**: el workflow de CD fallaba al asumir el rol vía OIDC, aun con provider,
   principal y audiencia correctos.
-- **Causas encontradas** (dos, encadenadas):
-  1. El repo tenía `default_workflow_permissions: read`, lo que impedía emitir el
-     `id-token` aunque el workflow pidiera `id-token: write`. Se cambió a `write`.
-  2. La condición del trust con `sub: repo/...:*` (comodín amplio) es **rechazada
-     por AWS** como "no scoped". El `sub` debe ser específico
-     (`...:ref:refs/heads/main`) o usar `job_workflow_ref`.
-- **Decisión**: tras varios intentos, para no bloquear el pipeline se optó por un
-  **usuario IAM de deploy con access keys** (guardadas en GitHub Secrets), que es
-  simple y confiable. OIDC queda como mejora futura (más seguro, sin llaves).
-- **Recomendación oil & gas**: si se usa OIDC, (a) poner `default_workflow_permissions`
-  en `write` (o habilitar que los workflows pidan permisos), y (b) usar un `sub`
-  específico por rama, nunca comodín amplio.
+- **Causa raíz (la de fondo)**: GitHub cambió el formato del claim `sub` de los
+  tokens OIDC. Los repos **creados después del 2026-07-15** usan por defecto un
+  formato **inmutable** que incluye el ID numérico del owner y del repo, con `@`
+  como separador: `repo:org@<owner_id>/repo@<repo_id>:ref:refs/heads/main`
+  (en vez del clásico `repo:org/repo:ref:refs/heads/main`). Nuestro repo se creó
+  el 2026-08-10, así que emite el formato nuevo. El trust policy con el nombre
+  plano (o con comodín) **nunca matcheaba** el `sub` real → `Not authorized`.
+  Fuentes: github.blog changelog "Immutable subject claims for GitHub Actions
+  OIDC tokens" y docs.github.com (OpenID Connect reference).
+- **Factores secundarios** que también hay que cuidar:
+  1. `default_workflow_permissions` debe permitir el `id-token` (poner `write`, o
+     que el workflow pida `permissions: id-token: write` explícito).
+  2. `aud` = `sts.amazonaws.com` con `StringEquals`; el `sub` con `StringLike`.
+     Nunca usar comodín amplio no-scoped.
+- **Solución aplicada**: en `infra/cicd.yaml` se creó el OIDC provider + rol
+  `rockality-github-deploy-oidc` con un trust policy cuyo `sub` es una **lista**
+  que cubre AMBOS formatos (clásico e inmutable con los IDs reales: owner
+  `16293755`, repo `1330171970`), scoped a `refs/heads/main`. El `cd.yml` usa
+  `role-to-assume` + `permissions: id-token: write` (sin access keys).
+- **Cómo obtener los IDs**: `gh api repos/<org>/<repo> --jq '{owner_id: .owner.id, repo_id: .id}'`.
+- **No es problema de propagación**: el cambio de subject claims ya está activo en
+  prod y los trust policies de IAM aplican en segundos; lo que fallaba era que el
+  patrón no coincidía con el nuevo `sub`.
+- **Recomendación oil & gas**: para OIDC en repos nuevos, construir el `sub` con el
+  formato inmutable (owner_id/repo_id) desde el inicio, o usar una lista que cubra
+  ambos formatos. Verificar `default_workflow_permissions` y `aud`.
 
 ### 13. Fail-fast síncrono choca con la resolución async del secreto (health 500)
 
