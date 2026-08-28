@@ -142,9 +142,16 @@ authorizer) -> Lambda (Express, arm64, en VPC privada sin internet) -> EFS (SQLi
 - **No es problema de propagación**: el cambio de subject claims ya está activo en
   prod y los trust policies de IAM aplican en segundos; lo que fallaba era que el
   patrón no coincidía con el nuevo `sub`.
+- **Limpieza post-validación**: una vez confirmado OIDC end-to-end, se borró el
+  usuario IAM de respaldo `rockality-github-deploy`, su access key y los GitHub
+  Secrets `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`. El CD ya no depende de
+  llaves permanentes. (Orden correcto: borrar primero la access key con
+  `aws iam delete-access-key`, luego el usuario — si es de CloudFormation, quitar
+  el recurso del template y re-desplegar.)
 - **Recomendación oil & gas**: para OIDC en repos nuevos, construir el `sub` con el
   formato inmutable (owner_id/repo_id) desde el inicio, o usar una lista que cubra
-  ambos formatos. Verificar `default_workflow_permissions` y `aud`.
+  ambos formatos. Verificar `default_workflow_permissions` y `aud`. No dejar access
+  keys de respaldo más tiempo del necesario.
 
 ### 13. Fail-fast síncrono choca con la resolución async del secreto (health 500)
 
