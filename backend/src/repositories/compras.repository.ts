@@ -7,6 +7,7 @@
  *  3. Se genera un gasto automático vinculado
  */
 import { getDatabase } from '../db/connection.js';
+import { registrarMovimientoEfectivo } from './caja.repository.js';
 
 export interface Compra {
   id: number;
@@ -140,6 +141,18 @@ export function create(data: CreateCompraData): CompraDetallada {
       );
 
     const gastoId = Number(gastoResult.lastInsertRowid);
+
+    // Caja: si la compra se pagó en efectivo y hay sesión abierta, sale de la caja.
+    registrarMovimientoEfectivo(db, {
+      metodo_pago_id: data.metodo_pago_id,
+      tipo: 'egreso',
+      monto: total,
+      origen: 'compra',
+      referencia_tipo: 'gasto',
+      referencia_id: gastoId,
+      motivo: `Compra en efectivo (gasto #${gastoId})`,
+      created_by: data.created_by,
+    });
 
     // 2. Crear compra
     const compraResult = db

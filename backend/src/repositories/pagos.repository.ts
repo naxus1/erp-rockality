@@ -5,6 +5,7 @@
  * Actualiza el estado de la venta automáticamente cuando se completa el pago.
  */
 import { getDatabase } from '../db/connection.js';
+import { registrarMovimientoEfectivo } from './caja.repository.js';
 
 export interface Pago {
   id: number;
@@ -80,6 +81,8 @@ export function create(data: CreatePagoData): PagoConMetodo {
         data.created_by || null,
       );
 
+    const pagoId = Number(result.lastInsertRowid);
+
     // Verificar si la venta ya está pagada por completo
     const venta = db.prepare('SELECT total FROM ventas WHERE id = ?').get(data.venta_id) as
       | { total: number }
@@ -92,7 +95,19 @@ export function create(data: CreatePagoData): PagoConMetodo {
       }
     }
 
-    return Number(result.lastInsertRowid);
+    // Caja: si el pago fue en efectivo y hay sesión abierta, entra a la caja.
+    registrarMovimientoEfectivo(db, {
+      metodo_pago_id: data.metodo_pago_id,
+      tipo: 'ingreso',
+      monto: data.monto,
+      origen: 'pago',
+      referencia_tipo: 'venta',
+      referencia_id: data.venta_id,
+      motivo: `Pago en efectivo venta #${data.venta_id}`,
+      created_by: data.created_by,
+    });
+
+    return pagoId;
   });
 
   const pagoId = registrarPago();

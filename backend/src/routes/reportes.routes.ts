@@ -3,6 +3,7 @@
  */
 import { Router, Request, Response } from 'express';
 import { getDatabase } from '../db/connection.js';
+import * as caja from '../repositories/caja.repository.js';
 
 const router = Router();
 
@@ -143,6 +144,66 @@ router.get('/dashboard', (_req: Request, res: Response) => {
       },
       stock_bajo: stockBajo.count,
       ticket_promedio: ticketPromedio,
+    },
+  });
+});
+
+// GET /api/reportes/conciliacion?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+// Concilia el dinero recibido: desglosa los pagos por método (efectivo vs
+// digital) en un rango de fechas, y muestra el saldo de caja (efectivo) actual.
+// Sirve para cuadrar lo digital contra el banco y ver el efectivo disponible.
+router.get('/conciliacion', (req: Request, res: Response) => {
+  const db = getDatabase();
+
+  // Rango: por defecto el mes actual
+  const hoy = new Date();
+  const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+  const desde = typeof req.query.desde === 'string' ? req.query.desde : primerDia;
+  const hasta =
+    typeof req.query.hasta === 'string' ? req.query.hasta : hoy.toISOString().split('T')[0];
+
+  // Pagos por método de pago en el rango (solo de ventas no anuladas)
+  const porMetodo = db
+    .prepare(
+      `SELECT mp.id, mp.nombre,
+         COALESCE(SUM(p.monto), 0) as total,
+         COUNT(p.id) as count
+       FROM metodos_pago mp
+       LEFT JOIN pagos p ON p.metodo_pago_id = mp.id
+         AND date(p.fecha) BETWEEN date(?) AND date(?)
+         AND EXISTS (SELECT 1 FROM ventas v WHERE v.id = p.venta_id AND v.estado != 'anulada')
+       GROUP BY mp.id, mp.nombre
+       ORDER BY total DESC`,
+    )
+    .all(desde, hasta) as Array<{ id: number; nombre: string; total: number; count: number }>;
+
+  const totalRecibido = porMetodo.reduce((sum, m) => sum + m.total, 0);
+  const totalEfectivo = porMetodo
+    .filter((m) => m.nombre.trim().toLowerCase() === 'efectivo')
+    .reduce((sum, m) => sum + m.total, 0);
+  const totalDigital = totalRecibido - totalEfectivo;
+
+  // Estado de la caja de efectivo
+  const sesion = caja.sesionAbierta();
+  const cajaEstado = sesion
+    ? {
+        abierta: true,
+        sesion_id: sesion.id,
+        saldo_inicial: sesion.saldo_inicial,
+        saldo_actual: caja.saldoEsperado(sesion.id),
+        resumen: caja.resumenSesion(sesion.id),
+      }
+    : { abierta: false };
+
+  res.json({
+    success: true,
+    data: {
+      rango: { desde, hasta },
+      pagos_por_metodo: porMetodo,
+      total_recibido: totalRecibido,
+      total_efectivo: totalEfectivo,
+      total_digital: totalDigital,
+      caja: cajaEstado,
     },
   });
 });

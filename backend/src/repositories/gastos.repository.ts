@@ -5,6 +5,7 @@
  * Separa periodo contable (mes al que pertenece) de fecha de pago.
  */
 import { getDatabase } from '../db/connection.js';
+import { registrarMovimientoEfectivo } from './caja.repository.js';
 
 export interface Gasto {
   id: number;
@@ -126,30 +127,48 @@ export function create(data: CreateGastoData): GastoConRelaciones {
   const ivaVal = data.iva ?? 0;
   const total = data.valor_base + ivaVal;
 
-  const result = db
-    .prepare(
-      `INSERT INTO gastos (tercero_nit, gerencia_id, tipo_gasto_id, categoria_gasto_id, descripcion, valor_base, iva, total, periodo_mes, periodo_anio, fecha_pago, metodo_pago_id, referencia_pago, notas, created_by)
+  const crearGasto = db.transaction(() => {
+    const result = db
+      .prepare(
+        `INSERT INTO gastos (tercero_nit, gerencia_id, tipo_gasto_id, categoria_gasto_id, descripcion, valor_base, iva, total, periodo_mes, periodo_anio, fecha_pago, metodo_pago_id, referencia_pago, notas, created_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
-      data.tercero_nit,
-      data.gerencia_id,
-      data.tipo_gasto_id,
-      data.categoria_gasto_id,
-      data.descripcion,
-      data.valor_base,
-      ivaVal,
-      total,
-      data.periodo_mes,
-      data.periodo_anio,
-      data.fecha_pago || new Date().toISOString().split('T')[0],
-      data.metodo_pago_id || null,
-      data.referencia_pago || null,
-      data.notas || null,
-      data.created_by || null,
-    );
+      )
+      .run(
+        data.tercero_nit,
+        data.gerencia_id,
+        data.tipo_gasto_id,
+        data.categoria_gasto_id,
+        data.descripcion,
+        data.valor_base,
+        ivaVal,
+        total,
+        data.periodo_mes,
+        data.periodo_anio,
+        data.fecha_pago || new Date().toISOString().split('T')[0],
+        data.metodo_pago_id || null,
+        data.referencia_pago || null,
+        data.notas || null,
+        data.created_by || null,
+      );
 
-  return findById(Number(result.lastInsertRowid))!;
+    const gastoId = Number(result.lastInsertRowid);
+
+    // Caja: si el gasto se pagó en efectivo y hay sesión abierta, sale de la caja.
+    registrarMovimientoEfectivo(db, {
+      metodo_pago_id: data.metodo_pago_id,
+      tipo: 'egreso',
+      monto: total,
+      origen: 'gasto',
+      referencia_tipo: 'gasto',
+      referencia_id: gastoId,
+      motivo: `Gasto en efectivo #${gastoId}: ${data.descripcion}`,
+      created_by: data.created_by,
+    });
+
+    return gastoId;
+  });
+
+  return findById(crearGasto())!;
 }
 
 /**
