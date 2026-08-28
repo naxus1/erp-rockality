@@ -125,9 +125,9 @@ export default function Catalogos() {
     <div>
       <h2 className="text-lg font-bold mb-4">Catálogos</h2>
 
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-4">
         {/* Sidebar */}
-        <div className="w-48 space-y-1">
+        <div className="w-full sm:w-48 space-y-1">
           {CATALOGOS.map((cat) => (
             <button
               key={cat.key}

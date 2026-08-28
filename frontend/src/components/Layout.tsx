@@ -1,5 +1,6 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 function Icon({ path }: { path: string }) {
@@ -57,6 +58,13 @@ function initials(name: string | undefined): string {
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Cierra el menú mobile al navegar a otra página.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -67,15 +75,36 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex bg-slate-50">
-      <aside className="w-60 bg-slate-900 flex flex-col shrink-0">
-        <div className="flex items-center gap-2.5 px-5 h-16 border-b border-white/10">
-          <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">
+      {/* Backdrop del menú mobile */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar — fija en desktop, drawer deslizable en mobile/tablet */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 flex flex-col shrink-0 transform transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex items-center gap-2.5 px-5 h-16 border-b border-white/10 shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
             R
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-sm font-semibold text-white leading-tight">Rockality</h1>
             <p className="text-[11px] text-slate-400 leading-tight">ERP Gimnasio</p>
           </div>
+          <button
+            onClick={() => setMobileOpen(false)}
+            title="Cerrar menú"
+            className="lg:hidden text-slate-400 hover:text-white p-1 shrink-0"
+          >
+            <Icon path="M6 18L18 6M6 6l12 12" />
+          </button>
         </div>
 
         <nav className="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto">
@@ -104,7 +133,7 @@ export default function Layout() {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-white/10">
+        <div className="p-3 border-t border-white/10 shrink-0">
           <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg">
             <div className="w-8 h-8 rounded-full bg-slate-700 text-slate-200 text-xs font-semibold flex items-center justify-center shrink-0">
               {initials(user?.nombre)}
@@ -124,9 +153,27 @@ export default function Layout() {
         </div>
       </aside>
 
-      <main className="flex-1 p-6 overflow-auto">
-        <Outlet />
-      </main>
+      {/* Columna de contenido */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Topbar — solo mobile/tablet */}
+        <header className="lg:hidden flex items-center gap-3 h-14 px-4 bg-white border-b border-slate-200 sticky top-0 z-20 shrink-0">
+          <button
+            onClick={() => setMobileOpen(true)}
+            title="Abrir menú"
+            className="text-slate-600 hover:text-slate-900 p-1 -ml-1"
+          >
+            <Icon path="M4 6h16M4 12h16M4 18h16" />
+          </button>
+          <div className="w-7 h-7 rounded-md bg-indigo-500 flex items-center justify-center text-white font-bold text-xs shrink-0">
+            R
+          </div>
+          <h1 className="text-sm font-semibold text-slate-800">Rockality</h1>
+        </header>
+
+        <main className="flex-1 p-4 sm:p-6 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
