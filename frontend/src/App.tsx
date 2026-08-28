@@ -11,6 +11,7 @@ import Terceros from './pages/Terceros';
 import Compras from './pages/Compras';
 import Planes from './pages/Planes';
 import Gastos from './pages/Gastos';
+import Caja from './pages/Caja';
 import Catalogos from './pages/Catalogos';
 import Placeholder from './pages/Placeholder';
 
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="/planes" element={<Planes />} />
             <Route path="/gastos" element={<Gastos />} />
             <Route path="/gastos/nuevo" element={<Gastos />} />
+            <Route path="/caja" element={<Caja />} />
             <Route path="/compras" element={<Compras />} />
             <Route path="/terceros" element={<Terceros />} />
             <Route path="/reportes" element={<Placeholder />} />

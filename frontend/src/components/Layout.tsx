@@ -27,6 +27,7 @@ const ICONS = {
   planes:
     'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m-5 8 2 2 4-4',
   gastos: 'M12 8v8m-3-5h6M5 21h14a2 2 0 0 0 2-2V8.5L15.5 3H7a2 2 0 0 0-2 2v3M5 12v7a2 2 0 0 0 2 2',
+  caja: 'M3 7h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Zm0 0 2-3h14l2 3M16 12h.01',
   compras: 'M6 6h15l-1.5 9h-12L6 6Zm0 0-1-3H2m7 18a1 1 0 1 0 0 .01m9 0a1 1 0 1 0 0-.01',
   factura: 'M7 3h10l3 3v15H4V6l3-3Zm0 0v4h10V3M8 12h8M8 16h5',
   terceros:
@@ -42,6 +43,7 @@ const NAV_ITEMS: Array<{ to: string; label: string; roles: string[]; icon: keyof
   { to: '/ventas', label: 'Ventas', roles: ['admin', 'vendedor'], icon: 'ventas' },
   { to: '/planes', label: 'Planes', roles: ['admin'], icon: 'planes' },
   { to: '/gastos', label: 'Gastos', roles: ['admin'], icon: 'gastos' },
+  { to: '/caja', label: 'Caja', roles: ['admin'], icon: 'caja' },
   { to: '/compras', label: 'Compras', roles: ['admin', 'vendedor'], icon: 'compras' },
   { to: '/gastos/nuevo', label: 'Registrar factura', roles: ['vendedor'], icon: 'factura' },
   { to: '/terceros', label: 'Terceros', roles: ['admin'], icon: 'terceros' },
