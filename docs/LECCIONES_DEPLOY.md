@@ -23,6 +23,8 @@ authorizer) -> Lambda (Express, arm64, en VPC privada sin internet) -> EFS (SQLi
 - [ ] CORS: el preflight `OPTIONS` debe ser público (sin authorizer).
 - [ ] Docker Desktop: desactivar "Resource Saver" (pausa el daemon durante builds).
 - [ ] Desplegar el artefacto empaquetado (`.aws-sam/build/template.yaml`), verificar `CodeSize` en la Lambda.
+- [ ] No hacer `throw` síncrono en la carga de config si el valor se resuelve async (Secrets Manager). Validar presencia de la fuente (env o ARN), no el valor final.
+- [ ] Health check post-deploy con reintentos (el cold start + fetch del secreto tarda).
 
 ---
 
@@ -129,6 +131,24 @@ authorizer) -> Lambda (Express, arm64, en VPC privada sin internet) -> EFS (SQLi
 - **Recomendación oil & gas**: si se usa OIDC, (a) poner `default_workflow_permissions`
   en `write` (o habilitar que los workflows pidan permisos), y (b) usar un `sub`
   específico por rama, nunca comodín amplio.
+
+### 13. Fail-fast síncrono choca con la resolución async del secreto (health 500)
+
+- **Síntoma**: tras un deploy vía CI, `/api/health` devolvía **HTTP 500** y la Lambda
+  crasheaba en init: `ENCRYPTION_KEY es obligatoria en producción` (en `config/index.js`).
+- **Causa**: `config/index.ts` hacía un `throw` **síncrono al cargar el módulo** si
+  `ENCRYPTION_KEY` no estaba en el entorno. Pero en producción la clave NO viene como
+  env var: solo se inyecta `ENCRYPTION_KEY_SECRET_ARN`, y la clave se resuelve de forma
+  **asíncrona** al arrancar (`loadEncryptionKey()` -> Secrets Manager). El throw ocurría
+  antes de esa resolución, matando la Lambda en init (INIT_REPORT Status: error).
+- **Solución**: el fail-fast solo debe disparar si faltan **ambas** fuentes
+  (`ENCRYPTION_KEY` **y** `ENCRYPTION_KEY_SECRET_ARN`). Si hay ARN, se confía en la
+  resolución async del arranque. Además, el health check del CD se hizo con reintentos
+  (10x cada 10s) para dar margen al cold start + fetch del secreto.
+- **Recomendación oil & gas**: cuidado con validaciones fail-fast en el nivel de módulo
+  (top-level) cuando la config real se resuelve async (Secrets Manager, Parameter Store).
+  Validar la **presencia de la fuente** (env o ARN) en el arranque, y validar el **valor
+  ya resuelto** dentro del bootstrap async, no en la carga del módulo.
 
 ### (operativo) Docker Desktop se pausa durante los builds
 
