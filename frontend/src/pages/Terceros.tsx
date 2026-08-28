@@ -158,7 +158,7 @@ export default function Terceros() {
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="p-4 rounded-xl neu-flat mb-4 grid grid-cols-3 gap-3"
+          className="p-4 rounded-xl neu-flat mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3"
         >
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">NIT / Cédula *</label>
@@ -224,7 +224,7 @@ export default function Terceros() {
               className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
-          <div className="col-span-2">
+          <div className="col-span-1 sm:col-span-2">
             <label className="block text-xs font-medium text-gray-600 mb-1">Observaciones</label>
             <input
               type="text"
@@ -246,7 +246,7 @@ export default function Terceros() {
       )}
 
       {/* Filtros */}
-      <div className="flex gap-3 mb-3">
+      <div className="flex flex-wrap gap-3 mb-3">
         <input
           type="text"
           placeholder="Buscar por nombre, NIT o contacto..."

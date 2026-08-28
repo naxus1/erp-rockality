@@ -281,8 +281,8 @@ export default function Compras() {
 
       {error && <p className="text-red-600 text-sm mb-3 bg-red-50 p-2 rounded">{error}</p>}
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 space-y-4">
           {/* Proveedor */}
           <div className="p-4 rounded-xl neu-flat">
             <h3 className="text-sm font-medium mb-2">Proveedor *</h3>

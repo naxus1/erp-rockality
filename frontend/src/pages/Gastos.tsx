@@ -280,7 +280,7 @@ export default function Gastos() {
         )}
 
         {/* Filtros + Resumen */}
-        <div className="flex gap-3 mb-3 items-center">
+        <div className="flex flex-wrap gap-3 mb-3 items-center">
           <select
             value={filtroMes}
             onChange={(e) => setFiltroMes(e.target.value)}
@@ -533,7 +533,10 @@ export default function Gastos() {
         </button>
       </div>
       {error && <p className="text-red-600 text-sm mb-3 bg-red-50 p-2 rounded">{error}</p>}
-      <form onSubmit={registrarGasto} className="p-4 rounded-xl neu-flat grid grid-cols-3 gap-3">
+      <form
+        onSubmit={registrarGasto}
+        className="p-4 rounded-xl neu-flat grid grid-cols-1 sm:grid-cols-3 gap-3"
+      >
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">
             Tercero (a quién se paga) *
@@ -600,7 +603,7 @@ export default function Gastos() {
             ))}
           </select>
         </div>
-        <div className="col-span-2">
+        <div className="col-span-1 sm:col-span-2">
           <label className="block text-xs font-medium text-gray-600 mb-1">Descripción *</label>
           <input
             type="text"
@@ -712,7 +715,7 @@ export default function Gastos() {
             Gasto recurrente
           </label>
         </div>
-        <div className="col-span-3 flex justify-end">
+        <div className="col-span-1 sm:col-span-3 flex justify-end">
           <button
             type="submit"
             className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"

@@ -235,7 +235,7 @@ export default function Planes() {
           {showForm && (
             <form
               onSubmit={handleSubmit}
-              className="p-4 rounded-xl neu-flat mb-4 grid grid-cols-3 gap-3"
+              className="p-4 rounded-xl neu-flat mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3"
             >
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
@@ -315,7 +315,7 @@ export default function Planes() {
                   className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 />
               </div>
-              <div className="col-span-3 flex justify-end">
+              <div className="col-span-1 sm:col-span-3 flex justify-end">
                 <button
                   type="submit"
                   className="text-gray-700 font-medium px-4 py-2 rounded-lg text-sm neu-btn"
