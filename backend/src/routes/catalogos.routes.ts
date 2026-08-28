@@ -6,6 +6,7 @@
  */
 import { Router, Request, Response } from 'express';
 import { getDatabase } from '../db/connection.js';
+import { toUpper } from '../schemas/text.js';
 
 const router = Router();
 
@@ -52,11 +53,12 @@ router.post('/:catalogo', (req: Request, res: Response) => {
     return;
   }
 
-  const { nombre } = req.body;
-  if (!nombre || nombre.length < 2) {
+  const nombreRaw = req.body.nombre;
+  if (typeof nombreRaw !== 'string' || nombreRaw.trim().length < 2) {
     res.status(400).json({ success: false, error: 'El nombre es obligatorio (mín 2 caracteres)' });
     return;
   }
+  const nombre = toUpper(nombreRaw);
 
   const db = getDatabase();
   try {
@@ -79,11 +81,12 @@ router.put('/:catalogo/:id', (req: Request, res: Response) => {
     return;
   }
 
-  const { nombre } = req.body;
-  if (!nombre || nombre.length < 2) {
+  const nombreRaw = req.body.nombre;
+  if (typeof nombreRaw !== 'string' || nombreRaw.trim().length < 2) {
     res.status(400).json({ success: false, error: 'El nombre es obligatorio (mín 2 caracteres)' });
     return;
   }
+  const nombre = toUpper(nombreRaw);
 
   const db = getDatabase();
   const existing = db

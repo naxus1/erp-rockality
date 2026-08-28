@@ -3,6 +3,7 @@ import * as repo from '../repositories/gastos.repository.js';
 import { validate } from '../middleware/validate.js';
 import { registrarAudit } from '../middleware/audit.js';
 import { createGastoSchema, updateGastoSchema } from '../schemas/gastos.schema.js';
+import { toUpper } from '../schemas/text.js';
 
 const router = Router();
 
@@ -79,7 +80,7 @@ router.put('/:id', validate(updateGastoSchema), (req: Request, res: Response) =>
 
 // POST /api/gastos/:id/anular — Anular gasto con motivo obligatorio
 router.post('/:id/anular', (req: Request, res: Response) => {
-  const motivo = typeof req.body.motivo === 'string' ? req.body.motivo.trim() : '';
+  const motivo = typeof req.body.motivo === 'string' ? toUpper(req.body.motivo) : '';
   if (!motivo) {
     res.status(400).json({ success: false, error: 'El motivo de anulación es obligatorio' });
     return;
