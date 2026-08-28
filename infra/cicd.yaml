@@ -102,53 +102,7 @@ Resources:
                   - budgets:*
                 Resource: '*'
 
-  # ─────────────────────────────────────────────────────────────
-  # Usuario IAM de respaldo (access keys). Se puede borrar tras validar OIDC.
-  # ─────────────────────────────────────────────────────────────
-  DeployUser:
-    Type: AWS::IAM::User
-    Properties:
-      UserName: rockality-github-deploy
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
-        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
-        - arn:aws:iam::aws:policy/AmazonS3FullAccess
-        - arn:aws:iam::aws:policy/CloudFrontFullAccess
-        - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
-        - arn:aws:iam::aws:policy/AmazonCognitoPowerUser
-        - arn:aws:iam::aws:policy/AmazonElasticFileSystemFullAccess
-        - arn:aws:iam::aws:policy/AmazonVPCFullAccess
-        - arn:aws:iam::aws:policy/SecretsManagerReadWrite
-      Policies:
-        - PolicyName: extras-deploy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Sid: IamParaSAM
-                Effect: Allow
-                Action:
-                  - iam:CreateRole
-                  - iam:DeleteRole
-                  - iam:GetRole
-                  - iam:PassRole
-                  - iam:AttachRolePolicy
-                  - iam:DetachRolePolicy
-                  - iam:PutRolePolicy
-                  - iam:DeleteRolePolicy
-                  - iam:GetRolePolicy
-                  - iam:TagRole
-                  - iam:UntagRole
-                Resource: '*'
-              - Sid: Budgets
-                Effect: Allow
-                Action:
-                  - budgets:*
-                Resource: '*'
-
 Outputs:
   DeployRoleArn:
     Description: ARN del rol OIDC para el workflow (role-to-assume en configure-aws-credentials).
     Value: !GetAtt DeployRole.Arn
-  DeployUserName:
-    Description: Usuario IAM de respaldo. Generar access keys y guardarlas en GitHub Secrets.
-    Value: !Ref DeployUser

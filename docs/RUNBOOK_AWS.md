@@ -123,31 +123,37 @@ hace falta correr `sam deploy` ni subir el frontend a mano.
 
 - **Workflow**: `.github/workflows/cd.yml` (se dispara en push a `main`; también
   manual desde la pestaña Actions con "Run workflow").
-- **Autenticación**: usuario IAM de deploy (`rockality-github-deploy`, stack
-  `rockality-cicd`) con access keys guardadas en los GitHub Secrets
-  `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY`.
-  - (Se intentó OIDC primero, pero la cuenta rechazaba el AssumeRole; ver
-    LECCIONES_DEPLOY.md #12. OIDC queda como mejora futura.)
-  - Rotar las llaves periódicamente: `aws iam create-access-key --user-name
-rockality-github-deploy`, actualizar los secrets, y borrar la llave vieja.
+- **Autenticación**: **OIDC** (sin llaves permanentes). GitHub asume el rol IAM
+  `rockality-github-deploy-oidc` (stack `rockality-cicd`). El workflow declara
+  `permissions: id-token: write` y usa `role-to-assume` con el ARN del rol.
+  - Ya **no** hay usuario IAM ni access keys: el usuario de respaldo
+    (`rockality-github-deploy`) y los secrets `AWS_ACCESS_KEY_ID` /
+    `AWS_SECRET_ACCESS_KEY` fueron eliminados tras validar OIDC.
+  - No hay que rotar nada (los tokens son efímeros, por ejecución).
+  - Detalle clave del trust policy: el `sub` debe usar el **formato inmutable** de
+    GitHub para repos creados tras 2026-07-15
+    (`repo:naxus1@16293755/erp-rockality@1330171970:ref:refs/heads/main`). Ver
+    LECCIONES_DEPLOY.md #12.
 - **Qué hace el pipeline**: build backend -> `sam build --use-container` ->
   `sam deploy` -> build frontend -> `s3 sync` -> invalidación CloudFront ->
-  health check.
+  health check (con reintentos).
 
-Recrear/actualizar el stack de CI/CD (usuario IAM de deploy):
+Recrear/actualizar el stack de CI/CD (OIDC provider + rol de deploy):
 
 ```bash
 aws cloudformation deploy --template-file infra/cicd.yaml \
   --stack-name rockality-cicd --capabilities CAPABILITY_NAMED_IAM \
   --region us-east-1 --profile rockality
-# Generar access keys y guardarlas como GitHub Secrets:
-aws iam create-access-key --user-name rockality-github-deploy --profile rockality
-gh secret set AWS_ACCESS_KEY_ID --body "<AccessKeyId>"
-gh secret set AWS_SECRET_ACCESS_KEY --body "<SecretAccessKey>"
+# El ARN del rol queda en los outputs del stack:
+aws cloudformation describe-stacks --stack-name rockality-cicd \
+  --region us-east-1 --profile rockality \
+  --query "Stacks[0].Outputs[?OutputKey=='DeployRoleArn'].OutputValue" --output text
 ```
 
 > Para replicar este CI/CD en otro proyecto (p. ej. oil & gas): copia `infra/cicd.yaml`
-> (cambiando el nombre del usuario) y `.github/workflows/cd.yml` (ajustando los `env`).
+> (ajustando `GitHubOrg`, `GitHubRepo`, `GitHubOwnerId`, `GitHubRepoId`) y
+> `.github/workflows/cd.yml` (ajustando los `env` y el ARN del rol). Obtén los IDs con
+> `gh api repos/<org>/<repo> --jq '{owner_id: .owner.id, repo_id: .id}'`.
 
 ## Ver logs de la Lambda
 
