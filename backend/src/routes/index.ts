@@ -15,6 +15,7 @@ import pagosRoutes from './pagos.routes.js';
 import comprasRoutes from './compras.routes.js';
 import planesRoutes from './planes.routes.js';
 import gastosRoutes from './gastos.routes.js';
+import cajaRoutes from './caja.routes.js';
 import reportesRoutes from './reportes.routes.js';
 import usuariosRoutes from './usuarios.routes.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -40,6 +41,7 @@ router.use('/pagos', pagosRoutes);
 router.use('/compras', comprasRoutes);
 router.use('/planes', planesRoutes);
 router.use('/gastos', gastosRoutes);
+router.use('/caja', cajaRoutes);
 router.use('/reportes', reportesRoutes);
 router.use('/usuarios', usuariosRoutes);
 

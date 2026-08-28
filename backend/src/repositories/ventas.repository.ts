@@ -8,6 +8,7 @@
  *  - Se puede registrar pago inmediato o quedar pendiente
  */
 import { getDatabase } from '../db/connection.js';
+import { registrarMovimientoEfectivo } from './caja.repository.js';
 
 export interface Venta {
   id: number;
@@ -278,6 +279,18 @@ export function create(data: CreateVentaData): VentaDetallada {
         data.pago_inmediato.referencia || null,
         data.created_by || null,
       );
+
+      // Caja: si el pago inmediato fue en efectivo y hay sesión abierta, entra.
+      registrarMovimientoEfectivo(db, {
+        metodo_pago_id: data.pago_inmediato.metodo_pago_id,
+        tipo: 'ingreso',
+        monto: data.pago_inmediato.monto,
+        origen: 'venta',
+        referencia_tipo: 'venta',
+        referencia_id: ventaId,
+        motivo: `Venta en efectivo #${ventaId}`,
+        created_by: data.created_by,
+      });
     }
 
     return ventaId;
