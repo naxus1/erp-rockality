@@ -6,7 +6,8 @@
 #  2. Frontend (build -> S3 -> invalidación CloudFront)
 #
 # Autenticación: OIDC (sin llaves permanentes). GitHub asume el rol IAM
-# rockality-github-deploy (creado por infra/cicd.yaml).
+# rockality-github-deploy-oidc (creado por infra/cicd.yaml). El trust policy
+# contempla el formato de "sub" inmutable de GitHub (owner_id/repo_id).
 # ============================================
 
 name: CD
@@ -18,6 +19,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write # necesario para OIDC (emitir el token que asume el rol IAM)
 
 env:
   AWS_REGION: us-east-1
@@ -54,12 +56,11 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      # Credenciales del usuario IAM de deploy (GitHub Secrets)
-      - name: Configurar credenciales AWS
+      # Credenciales vía OIDC (sin llaves permanentes): GitHub asume el rol IAM.
+      - name: Configurar credenciales AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::545860874640:role/rockality-github-deploy-oidc
           aws-region: ${{ env.AWS_REGION }}
 
       # ── Backend + infraestructura ──
