@@ -117,7 +117,7 @@ export default function Dashboard() {
       {(data.suscripciones_por_vencer > 0 ||
         data.stock_bajo > 0 ||
         data.ventas_pendientes.count > 0) && (
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
           {data.suscripciones_por_vencer > 0 && (
             <div
               className="bg-amber-50 border border-amber-200 rounded-xl p-3 cursor-pointer hover:bg-amber-100 transition-colors"
@@ -179,7 +179,7 @@ export default function Dashboard() {
       )}
 
       {/* KPIs principales */}
-      <div className="grid grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <KpiCard
           label="Ventas del mes"
           value={formatCOP(data.ventas_mes.total)}
@@ -212,7 +212,7 @@ export default function Dashboard() {
       </div>
 
       {/* KPIs secundarios */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           label="Suscripciones activas"
           value={String(data.suscripciones_activas)}

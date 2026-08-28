@@ -352,7 +352,7 @@ export default function Clientes() {
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="p-4 rounded-xl neu-flat mb-4 grid grid-cols-3 gap-3"
+          className="p-4 rounded-xl neu-flat mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3"
         >
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Cédula *</label>
@@ -518,7 +518,7 @@ export default function Clientes() {
 
           {/* Referido: quién lo refirió (solo si el canal es "Referido") */}
           {esReferido && (
-            <div className="col-span-3 grid grid-cols-2 gap-3 bg-blue-50/50 rounded-lg p-3">
+            <div className="col-span-1 sm:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-blue-50/50 rounded-lg p-3">
               <div className="relative">
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   Referido por (cliente)
@@ -628,7 +628,7 @@ export default function Clientes() {
               className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
-          <div className="col-span-3 flex items-center gap-4">
+          <div className="col-span-1 sm:col-span-3 flex flex-wrap items-center gap-4">
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -651,7 +651,7 @@ export default function Clientes() {
       )}
 
       {/* Búsqueda y filtros */}
-      <div className="flex gap-3 mb-3 items-center">
+      <div className="flex flex-wrap gap-3 mb-3 items-center">
         <input
           type="text"
           placeholder="Buscar por nombre, apellido, cédula o teléfono..."
@@ -820,8 +820,8 @@ export default function Clientes() {
 
       {/* Ficha del cliente (modal) */}
       {ficha && (
-        <div className="fixed inset-0 bg-black/30 flex items-start justify-center pt-10 z-50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-auto p-6">
+        <div className="fixed inset-0 bg-black/30 flex items-start justify-center pt-6 sm:pt-10 z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-auto p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold">
                 Ficha: {ficha.cliente.nombre} {ficha.cliente.apellidos}
@@ -834,7 +834,7 @@ export default function Clientes() {
                 ✕
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-sm mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm mb-4">
               <div>
                 <span className="text-gray-500">Cédula:</span> {maskCedula(ficha.cliente.cedula)}
               </div>
@@ -862,7 +862,7 @@ export default function Clientes() {
             )}
 
             {/* Referidos y cortesías */}
-            <div className="grid grid-cols-3 gap-3 mb-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 text-xs">
               <div className="rounded-lg neu-flat p-3">
                 <span className="text-gray-500 block mb-1">Referido por</span>
                 {ficha.referido_por_cliente ? (

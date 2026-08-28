@@ -330,7 +330,7 @@ export default function Ventas() {
   // Modal reutilizable para capturar el motivo de anulación
   const modalAnular = anularId !== null && (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-      <div className="w-full max-w-md rounded-xl neu-flat p-5" style={{ background: '#e0e5ec' }}>
+      <div className="w-full max-w-md rounded-xl neu-flat p-5">
         <h3 className="text-base font-bold mb-1">Anular venta #{anularId}</h3>
         <p className="text-xs text-gray-500 mb-3">
           Se restaurará el stock y se cancelarán las suscripciones. Esta acción queda registrada.
@@ -391,11 +391,11 @@ export default function Ventas() {
           <p className="text-green-600 text-sm mb-3 bg-green-50 p-2 rounded">{success}</p>
         )}
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Info + Items */}
-          <div className="col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-4">
             <div className="p-4 rounded-xl neu-flat">
-              <div className="grid grid-cols-3 gap-3 text-sm mb-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm mb-3">
                 <div>
                   <span className="text-gray-500">Cliente:</span>{' '}
                   <span className="font-medium">
@@ -620,7 +620,7 @@ export default function Ventas() {
         )}
 
         {/* Filtros */}
-        <div className="flex gap-3 mb-3">
+        <div className="flex flex-wrap gap-3 mb-3">
           <select
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
@@ -795,8 +795,8 @@ export default function Ventas() {
 
       {error && <p className="text-red-600 text-sm mb-3 bg-red-50 p-2 rounded">{error}</p>}
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 space-y-4">
           {/* Cliente */}
           <div className="p-4 rounded-xl neu-flat">
             <h3 className="text-sm font-medium mb-2">Cliente (opcional)</h3>
