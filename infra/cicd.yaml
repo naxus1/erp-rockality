@@ -1,12 +1,110 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  CI/CD — Usuario IAM de despliegue para GitHub Actions (ERP Rockality).
-  Stack separado del de la app. Las access keys se generan aparte (CLI) y se
-  guardan como GitHub Secrets.
-  NOTA: se intentó OIDC (rol federado) pero la cuenta rechazaba el AssumeRole;
-  se usa un usuario IAM dedicado con permisos de deploy. Ver LECCIONES_DEPLOY.md.
+  CI/CD — Autenticación de despliegue para GitHub Actions (ERP Rockality).
+  Stack separado del de la app. Provee DOS métodos:
+   1. OIDC (recomendado): rol federado sin llaves permanentes. GitHub asume el rol.
+   2. Usuario IAM (respaldo): access keys guardadas como GitHub Secrets.
+  El trust policy del rol contempla el nuevo formato de "sub" inmutable de GitHub
+  (repos creados tras 2026-07-15 incluyen owner_id/repo_id). Ver LECCIONES_DEPLOY.md.
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Default: naxus1
+    Description: Owner (usuario/org) del repositorio en GitHub.
+  GitHubRepo:
+    Type: String
+    Default: erp-rockality
+    Description: Nombre del repositorio en GitHub.
+  GitHubOwnerId:
+    Type: String
+    Default: '16293755'
+    Description: ID numérico del owner (para el formato de sub inmutable).
+  GitHubRepoId:
+    Type: String
+    Default: '1330171970'
+    Description: ID numérico del repositorio (para el formato de sub inmutable).
+  DeployBranch:
+    Type: String
+    Default: main
+    Description: Rama autorizada a desplegar vía OIDC.
 
 Resources:
+  # ─────────────────────────────────────────────────────────────
+  # OIDC — Provider de GitHub + Rol federado de deploy (recomendado)
+  # ─────────────────────────────────────────────────────────────
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      # AWS ya no valida thumbprints para este proveedor (usa la CA raíz de la
+      # librería TLS), pero el campo sigue siendo requerido por la API.
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: rockality-github-deploy-oidc
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOIDCProvider
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              # Lista que cubre AMBOS formatos de sub: el clásico (por si el repo
+              # aún emite el viejo) y el inmutable con owner_id/repo_id (default
+              # para repos creados tras 2026-07-15). Scoped a la rama de deploy.
+              StringLike:
+                token.actions.githubusercontent.com:sub:
+                  - !Sub repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/${DeployBranch}
+                  - !Sub repo:${GitHubOrg}@${GitHubOwnerId}/${GitHubRepo}@${GitHubRepoId}:ref:refs/heads/${DeployBranch}
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/CloudFrontFullAccess
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+        - arn:aws:iam::aws:policy/AmazonCognitoPowerUser
+        - arn:aws:iam::aws:policy/AmazonElasticFileSystemFullAccess
+        - arn:aws:iam::aws:policy/AmazonVPCFullAccess
+        - arn:aws:iam::aws:policy/SecretsManagerReadWrite
+      Policies:
+        - PolicyName: extras-deploy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: IamParaSAM
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:PassRole
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                Resource: '*'
+              - Sid: Budgets
+                Effect: Allow
+                Action:
+                  - budgets:*
+                Resource: '*'
+
+  # ─────────────────────────────────────────────────────────────
+  # Usuario IAM de respaldo (access keys). Se puede borrar tras validar OIDC.
+  # ─────────────────────────────────────────────────────────────
   DeployUser:
     Type: AWS::IAM::User
     Properties:
@@ -48,6 +146,9 @@ Resources:
                 Resource: '*'
 
 Outputs:
+  DeployRoleArn:
+    Description: ARN del rol OIDC para el workflow (role-to-assume en configure-aws-credentials).
+    Value: !GetAtt DeployRole.Arn
   DeployUserName:
-    Description: Usuario IAM para CI/CD. Generar access keys y guardarlas en GitHub Secrets.
+    Description: Usuario IAM de respaldo. Generar access keys y guardarlas en GitHub Secrets.
     Value: !Ref DeployUser
