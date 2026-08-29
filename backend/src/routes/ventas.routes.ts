@@ -3,6 +3,7 @@ import * as repo from '../repositories/ventas.repository.js';
 import { registrarAudit } from '../middleware/audit.js';
 import { validate } from '../middleware/validate.js';
 import { createVentaSchema } from '../schemas/ventas.schema.js';
+import { toUpper } from '../schemas/text.js';
 
 const router = Router();
 
@@ -48,7 +49,7 @@ router.post('/', validate(createVentaSchema), (req: Request, res: Response) => {
 
 // POST /api/ventas/:id/anular — Anular venta (restaura stock, cancela suscripción)
 router.post('/:id/anular', (req: Request, res: Response) => {
-  const motivo = typeof req.body.motivo === 'string' ? req.body.motivo.trim() : '';
+  const motivo = typeof req.body.motivo === 'string' ? toUpper(req.body.motivo) : '';
   if (!motivo) {
     res.status(400).json({ success: false, error: 'El motivo de anulación es obligatorio' });
     return;
