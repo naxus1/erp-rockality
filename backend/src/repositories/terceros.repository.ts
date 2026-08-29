@@ -5,6 +5,7 @@
  * PK = NIT o cédula.
  */
 import { getDatabase } from '../db/connection.js';
+import { toUpper } from '../schemas/text.js';
 
 export interface Tercero {
   nit: string;
@@ -81,11 +82,13 @@ export function findByNit(nit: string): TerceroConTipo | undefined {
 
 export function search(query: string): TerceroConTipo[] {
   const db = getDatabase();
-  const param = `%${query}%`;
+  // Datos en MAYÚSCULAS: comparamos UPPER(columna) contra el término normalizado
+  // para búsqueda insensible a mayúsculas/acentos.
+  const param = `%${toUpper(query)}%`;
   return db
     .prepare(
       `${SELECT_TERCERO}
-       WHERE t.activo = 1 AND (t.nombre LIKE ? OR t.nit LIKE ? OR t.nombre_contacto LIKE ?)
+       WHERE t.activo = 1 AND (UPPER(t.nombre) LIKE ? OR UPPER(t.nit) LIKE ? OR UPPER(t.nombre_contacto) LIKE ?)
        ORDER BY t.nombre LIMIT 20`,
     )
     .all(param, param, param) as TerceroConTipo[];

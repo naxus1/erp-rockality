@@ -6,6 +6,7 @@
  */
 import { getDatabase } from '../db/connection.js';
 import { encryptNullable, decrypt, hmac } from '../utils/crypto.js';
+import { toUpper } from '../schemas/text.js';
 
 export interface Cliente {
   cedula: string;
@@ -126,7 +127,11 @@ export function findByCedula(cedula: string): ClienteConRelaciones | undefined {
 
 export function search(query: string): ClienteConRelaciones[] {
   const db = getDatabase();
-  const param = `%${query}%`;
+  // Los datos se guardan en MAYÚSCULAS. Normalizamos el término igual y comparamos
+  // UPPER(columna) contra el término, para que la búsqueda sea insensible a
+  // mayúsculas/minúsculas incluso con acentos y la Ñ (LIKE de SQLite solo es
+  // case-insensitive para ASCII).
+  const param = `%${toUpper(query)}%`;
   // El teléfono está cifrado: no se puede LIKE. Buscamos por nombre/apellidos/cédula
   // con LIKE, y además por teléfono exacto vía HMAC (si el término es un número).
   const telHash = hmac(query);
@@ -134,7 +139,7 @@ export function search(query: string): ClienteConRelaciones[] {
     .prepare(
       `${SELECT_CLIENTE}
        WHERE c.activo = 1 AND (
-         c.nombre LIKE ? OR c.apellidos LIKE ? OR c.cedula LIKE ? OR c.telefono_hash = ?
+         UPPER(c.nombre) LIKE ? OR UPPER(c.apellidos) LIKE ? OR UPPER(c.cedula) LIKE ? OR c.telefono_hash = ?
        )
        ORDER BY c.nombre, c.apellidos
        LIMIT 20`,
