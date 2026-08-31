@@ -25,6 +25,8 @@ export interface Cliente {
   notas_salud: string | null;
   instagram: string | null;
   linkedin: string | null;
+  whatsapp: string | null;
+  hace_ejercicio: number;
   referido_por: string | null;
   referido_por_nombre: string | null;
   telefono_hash: string | null;
@@ -58,6 +60,8 @@ export interface CreateClienteData {
   notas_salud?: string;
   instagram?: string;
   linkedin?: string;
+  whatsapp?: string;
+  hace_ejercicio?: number;
   referido_por?: string;
   referido_por_nombre?: string;
   created_by?: string;
@@ -78,6 +82,8 @@ export interface UpdateClienteData {
   notas_salud?: string;
   instagram?: string;
   linkedin?: string;
+  whatsapp?: string;
+  hace_ejercicio?: number;
   referido_por?: string;
   referido_por_nombre?: string;
   updated_by?: string;
@@ -154,8 +160,8 @@ export function create(data: CreateClienteData): ClienteConRelaciones {
   const consentimientoFecha = consentimiento ? new Date().toISOString() : null;
 
   db.prepare(
-    `INSERT INTO clientes (cedula, nombre, apellidos, telefono, telefono_hash, email, fecha_nacimiento, direccion, ciudad_id, sexo_id, canal_captacion_id, consentimiento_datos, consentimiento_fecha, notas, notas_salud, instagram, linkedin, referido_por, referido_por_nombre, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO clientes (cedula, nombre, apellidos, telefono, telefono_hash, email, fecha_nacimiento, direccion, ciudad_id, sexo_id, canal_captacion_id, consentimiento_datos, consentimiento_fecha, notas, notas_salud, instagram, linkedin, whatsapp, hace_ejercicio, referido_por, referido_por_nombre, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     data.cedula,
     data.nombre,
@@ -174,6 +180,8 @@ export function create(data: CreateClienteData): ClienteConRelaciones {
     data.notas_salud || null,
     data.instagram || null,
     data.linkedin || null,
+    data.whatsapp || null,
+    data.hace_ejercicio ?? 0,
     data.referido_por || null,
     data.referido_por_nombre || null,
     data.created_by || null,
@@ -214,8 +222,9 @@ export function update(cedula: string, data: UpdateClienteData): ClienteConRelac
        nombre = ?, apellidos = ?, telefono = ?, telefono_hash = ?, email = ?,
        fecha_nacimiento = ?, direccion = ?, ciudad_id = ?, sexo_id = ?,
        canal_captacion_id = ?, consentimiento_datos = ?, consentimiento_fecha = ?,
-       notas = ?, notas_salud = ?, instagram = ?, linkedin = ?,
-       referido_por = ?, referido_por_nombre = ?, updated_at = datetime('now'), updated_by = ?
+       notas = ?, notas_salud = ?, instagram = ?, linkedin = ?, whatsapp = ?,
+       hace_ejercicio = ?, referido_por = ?, referido_por_nombre = ?,
+       updated_at = datetime('now'), updated_by = ?
      WHERE cedula = ?`,
   ).run(
     data.nombre ?? current.nombre,
@@ -234,6 +243,8 @@ export function update(cedula: string, data: UpdateClienteData): ClienteConRelac
     data.notas_salud ?? current.notas_salud,
     data.instagram ?? current.instagram,
     data.linkedin ?? current.linkedin,
+    data.whatsapp ?? current.whatsapp,
+    data.hace_ejercicio ?? current.hace_ejercicio,
     referidoPorFinal,
     referidoPorNombreFinal,
     data.updated_by || null,
