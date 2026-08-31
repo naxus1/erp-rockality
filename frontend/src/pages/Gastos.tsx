@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { TableSkeletonRows } from '../components/Skeleton';
 import { api } from '../services/api';
 
 interface Gasto {
@@ -48,6 +49,7 @@ const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'O
 export default function Gastos() {
   const [vista, setVista] = useState<'lista' | 'nuevo'>('lista');
   const [gastos, setGastos] = useState<Gasto[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -92,6 +94,7 @@ export default function Gastos() {
   });
 
   const cargarGastos = async () => {
+    setLoading(true);
     try {
       let url = `/gastos?periodo_mes=${filtroMes}&periodo_anio=${filtroAnio}`;
       if (filtroGerencia) url += `&gerencia_id=${filtroGerencia}`;
@@ -99,6 +102,8 @@ export default function Gastos() {
       setGastos(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -333,7 +338,9 @@ export default function Gastos() {
               </tr>
             </thead>
             <tbody>
-              {gastos.length === 0 ? (
+              {loading ? (
+                <TableSkeletonRows cols={8} />
+              ) : gastos.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-3 py-4 text-center text-gray-400">
                     No hay gastos en este periodo

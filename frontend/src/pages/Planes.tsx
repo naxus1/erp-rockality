@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
+import { TableSkeletonRows } from '../components/Skeleton';
 
 interface Plan {
   id: number;
@@ -56,6 +57,7 @@ export default function Planes() {
     searchParams.get('tab') === 'suscripciones' ? 'suscripciones' : 'planes',
   );
   const [planes, setPlanes] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
   const [suscripciones, setSuscripciones] = useState<Suscripcion[]>([]);
   const [porVencer, setPorVencer] = useState<Suscripcion[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -70,11 +72,14 @@ export default function Planes() {
   const [inactivando, setInactivando] = useState(false);
 
   const cargarPlanes = async () => {
+    setLoading(true);
     try {
       const res = await api.get<ApiResponse<Plan[]>>('/planes?incluir_inactivos=1');
       setPlanes(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setLoading(false);
     }
   };
   const cargarSuscripciones = async () => {
@@ -341,7 +346,9 @@ export default function Planes() {
                 </tr>
               </thead>
               <tbody>
-                {planes.length === 0 ? (
+                {loading ? (
+                  <TableSkeletonRows cols={7} />
+                ) : planes.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-3 py-4 text-center text-gray-400">
                       No hay planes
@@ -481,7 +488,9 @@ export default function Planes() {
                 </tr>
               </thead>
               <tbody>
-                {suscripciones.length === 0 ? (
+                {loading ? (
+                  <TableSkeletonRows cols={7} />
+                ) : suscripciones.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-3 py-4 text-center text-gray-400">
                       No hay suscripciones activas
