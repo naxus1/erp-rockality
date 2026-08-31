@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { TableSkeletonRows } from '../components/Skeleton';
 
 interface CatalogoItem {
   id: number;
@@ -28,6 +29,7 @@ const CATALOGOS = [
 export default function Catalogos() {
   const [selected, setSelected] = useState(CATALOGOS[0]);
   const [items, setItems] = useState<CatalogoItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [editandoNombre, setEditandoNombre] = useState('');
@@ -37,11 +39,14 @@ export default function Catalogos() {
   const endpoint = selected.useOwnEndpoint ? '/categorias-producto' : `/catalogos/${selected.key}`;
 
   const cargar = async () => {
+    setLoading(true);
     try {
       const res = await api.get<ApiResponse<CatalogoItem[]>>(endpoint);
       setItems(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -179,7 +184,9 @@ export default function Catalogos() {
                 </tr>
               </thead>
               <tbody>
-                {items.length === 0 ? (
+                {loading ? (
+                  <TableSkeletonRows cols={3} />
+                ) : items.length === 0 ? (
                   <tr>
                     <td colSpan={3} className="px-3 py-4 text-center text-gray-400">
                       Sin datos
