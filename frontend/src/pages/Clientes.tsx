@@ -303,6 +303,15 @@ export default function Clientes() {
       return;
     }
 
+    // Si el canal es "Referido", exige indicar quién refirió: un cliente
+    // existente (referido_por) o un nombre libre (referido_por_nombre).
+    if (esReferido && !form.referido_por && !form.referido_por_nombre.trim()) {
+      setError(
+        'Como el canal es "Referido", indica quién lo refirió (elige un cliente o escribe un nombre)',
+      );
+      return;
+    }
+
     const fechaNac =
       form.anio_nac && form.mes_nac && form.dia_nac
         ? `${form.anio_nac}-${form.mes_nac.padStart(2, '0')}-${form.dia_nac.padStart(2, '0')}`
@@ -399,18 +408,20 @@ export default function Clientes() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Teléfono</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Teléfono *</label>
             <input
               type="text"
+              required
               value={form.telefono}
               onChange={(e) => setForm({ ...form, telefono: e.target.value })}
               className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Email *</label>
             <input
               type="text"
+              required
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               placeholder="ejemplo@correo.com"
@@ -418,7 +429,9 @@ export default function Clientes() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Fecha nacimiento</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Fecha nacimiento *
+            </label>
             <div className="flex gap-1">
               <select
                 value={form.dia_nac}
@@ -532,9 +545,13 @@ export default function Clientes() {
           {/* Referido: quién lo refirió (solo si el canal es "Referido") */}
           {esReferido && (
             <div className="col-span-1 sm:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-blue-50/50 rounded-lg p-3">
+              <p className="col-span-1 sm:col-span-2 text-xs text-blue-700 font-medium">
+                Como es "Referido", indica quién lo refirió: elige un cliente existente o escribe un
+                nombre. *
+              </p>
               <div className="relative">
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Referido por (cliente)
+                  Referido por (cliente) *
                 </label>
                 {form.referido_por ? (
                   <div className="flex items-center gap-2">
