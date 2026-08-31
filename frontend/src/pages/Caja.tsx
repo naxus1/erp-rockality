@@ -453,7 +453,7 @@ export default function Caja() {
               Retiro (entrega/consignación), ingreso manual, o ajuste (sobrante/fondo). Las ventas y
               gastos en efectivo ya se registran solos.
             </p>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Tipo *</label>
             <select
               value={movTipo}
               onChange={(e) =>
@@ -466,7 +466,7 @@ export default function Caja() {
               <option value="egreso">Egreso manual</option>
               <option value="ajuste">Ajuste (sobrante / fondo)</option>
             </select>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Monto ($)</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Monto ($) *</label>
             <input
               type="number"
               min="1"

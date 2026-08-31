@@ -302,7 +302,7 @@ export default function Compras() {
 
           {/* Productos */}
           <div className="p-4 rounded-xl neu-flat">
-            <h3 className="text-sm font-medium mb-2">Agregar productos</h3>
+            <h3 className="text-sm font-medium mb-2">Agregar productos *</h3>
             <select
               onChange={(e) => {
                 if (e.target.value) agregarProducto(e.target.value);
