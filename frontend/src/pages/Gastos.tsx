@@ -645,7 +645,7 @@ export default function Gastos() {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Periodo mes</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Periodo mes *</label>
           <select
             value={form.periodo_mes}
             onChange={(e) => setForm({ ...form, periodo_mes: e.target.value })}
@@ -659,7 +659,7 @@ export default function Gastos() {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Periodo año</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Periodo año *</label>
           <select
             value={form.periodo_anio}
             onChange={(e) => setForm({ ...form, periodo_anio: e.target.value })}
