@@ -39,6 +39,16 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const data = await res.json();
 
   if (!res.ok) {
+    // Si el backend devuelve el detalle de validación (Zod), lo mostramos campo
+    // por campo para que el error sea específico y no un genérico "Datos inválidos".
+    if (Array.isArray(data.details) && data.details.length > 0) {
+      const detalle = data.details
+        .map((d: { campo?: string; mensaje?: string }) =>
+          d.campo ? `${d.campo}: ${d.mensaje}` : d.mensaje,
+        )
+        .join(' · ');
+      throw new Error(detalle || data.error || `Error ${res.status}`);
+    }
     throw new Error(data.error || `Error ${res.status}`);
   }
 
