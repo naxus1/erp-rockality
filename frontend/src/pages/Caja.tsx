@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { CardSkeletonGrid } from '../components/Skeleton';
 
 interface Movimiento {
   id: number;
@@ -200,7 +201,12 @@ export default function Caja() {
       : null;
 
   if (loading) {
-    return <p className="text-gray-500">Cargando caja...</p>;
+    return (
+      <div>
+        <h2 className="text-lg font-bold mb-4">Caja (efectivo)</h2>
+        <CardSkeletonGrid count={4} />
+      </div>
+    );
   }
 
   return (

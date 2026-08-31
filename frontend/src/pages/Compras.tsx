@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { TableSkeletonRows } from '../components/Skeleton';
 
 interface Producto {
   sku: string;
@@ -46,6 +47,7 @@ function formatCOP(centavos: number): string {
 export default function Compras() {
   const [vista, setVista] = useState<'lista' | 'nueva'>('lista');
   const [compras, setCompras] = useState<CompraResumen[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -62,11 +64,14 @@ export default function Compras() {
   const [notas, setNotas] = useState('');
 
   const cargarCompras = async () => {
+    setLoading(true);
     try {
       const res = await api.get<ApiResponse<CompraResumen[]>>('/compras');
       setCompras(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -210,7 +215,9 @@ export default function Compras() {
               </tr>
             </thead>
             <tbody>
-              {compras.length === 0 ? (
+              {loading ? (
+                <TableSkeletonRows cols={7} />
+              ) : compras.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-3 py-4 text-center text-gray-400">
                     No hay compras registradas

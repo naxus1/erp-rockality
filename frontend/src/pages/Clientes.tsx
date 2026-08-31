@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { TableSkeletonRows } from '../components/Skeleton';
 
 interface Cliente {
   cedula: string;
@@ -71,6 +72,7 @@ const FORM_VACIO = {
 
 export default function Clientes() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editando, setEditando] = useState<string | null>(null); // cédula del cliente editándose
@@ -152,11 +154,14 @@ export default function Clientes() {
   const cerrarFicha = () => setFicha(null);
 
   const cargarClientes = async () => {
+    setLoading(true);
     try {
       const res = await api.get<ApiResponse<Cliente[]>>('/clientes');
       setClientes(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error cargando clientes');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -165,11 +170,14 @@ export default function Clientes() {
       cargarClientes();
       return;
     }
+    setLoading(true);
     try {
       const res = await api.get<ApiResponse<Cliente[]>>(`/clientes/buscar?q=${busqueda}`);
       setClientes(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error en búsqueda');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -790,7 +798,9 @@ export default function Clientes() {
             </tr>
           </thead>
           <tbody>
-            {clientesFiltrados.length === 0 ? (
+            {loading ? (
+              <TableSkeletonRows cols={9} />
+            ) : clientesFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-3 py-4 text-center text-gray-400">
                   No hay clientes registrados

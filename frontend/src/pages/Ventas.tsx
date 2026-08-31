@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
+import { TableSkeletonRows } from '../components/Skeleton';
 
 interface Producto {
   sku: string;
@@ -91,6 +92,7 @@ export default function Ventas() {
   const [motivoAnulacion, setMotivoAnulacion] = useState('');
   const [anulando, setAnulando] = useState(false);
   const [ventas, setVentas] = useState<VentaResumen[]>([]);
+  const [loading, setLoading] = useState(true);
   const [ventaDetalle, setVentaDetalle] = useState<VentaDetalle | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -121,6 +123,7 @@ export default function Ventas() {
   const [nuevopagoRef, setNuevopagoRef] = useState('');
 
   const cargarVentas = async () => {
+    setLoading(true);
     try {
       let url = '/ventas?';
       if (filtroEstado) url += `estado=${filtroEstado}&`;
@@ -129,6 +132,8 @@ export default function Ventas() {
       setVentas(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -701,7 +706,9 @@ export default function Ventas() {
               </tr>
             </thead>
             <tbody>
-              {ventas.length === 0 ? (
+              {loading ? (
+                <TableSkeletonRows cols={7} />
+              ) : ventas.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-3 py-4 text-center text-gray-400">
                     No hay ventas registradas

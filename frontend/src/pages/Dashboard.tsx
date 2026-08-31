@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CardSkeletonGrid } from '../components/Skeleton';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
@@ -106,7 +107,17 @@ export default function Dashboard() {
         {error}
       </p>
     );
-  if (!data) return <p className="text-slate-400 text-sm">Cargando...</p>;
+  if (!data)
+    return (
+      <div>
+        <h2 className="text-xl font-bold text-slate-900 mb-1">Dashboard</h2>
+        <p className="text-sm text-slate-500 mb-5">Cargando resumen...</p>
+        <div className="space-y-3">
+          <CardSkeletonGrid count={4} />
+          <CardSkeletonGrid count={4} />
+        </div>
+      </div>
+    );
 
   return (
     <div>

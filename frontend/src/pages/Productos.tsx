@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { TableSkeletonRows } from '../components/Skeleton';
 import { api } from '../services/api';
 
 interface Producto {
@@ -65,6 +66,7 @@ const FORM_VACIO = {
 
 export default function Productos() {
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editando, setEditando] = useState<string | null>(null); // SKU editándose
   const [error, setError] = useState('');
@@ -111,11 +113,14 @@ export default function Productos() {
     });
 
   const cargarProductos = async () => {
+    setLoading(true);
     try {
       const res = await api.get<ApiResponse<Producto[]>>('/productos');
       setProductos(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error cargando productos');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -506,7 +511,9 @@ export default function Productos() {
             </tr>
           </thead>
           <tbody>
-            {productosFiltrados.length === 0 ? (
+            {loading ? (
+              <TableSkeletonRows cols={10} />
+            ) : productosFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={10} className="px-3 py-4 text-center text-gray-400">
                   No hay productos registrados

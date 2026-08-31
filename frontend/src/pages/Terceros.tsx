@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { TableSkeletonRows } from '../components/Skeleton';
 
 interface Tercero {
   nit: string;
@@ -34,6 +35,7 @@ const FORM_VACIO = {
 
 export default function Terceros() {
   const [terceros, setTerceros] = useState<Tercero[]>([]);
+  const [loading, setLoading] = useState(true);
   const [tiposTercero, setTiposTercero] = useState<Catalogo[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
@@ -44,12 +46,15 @@ export default function Terceros() {
   const [form, setForm] = useState(FORM_VACIO);
 
   const cargar = async () => {
+    setLoading(true);
     try {
       const url = filtroTipo ? `/terceros?tipo_tercero_id=${filtroTipo}` : '/terceros';
       const res = await api.get<ApiResponse<Tercero[]>>(url);
       setTerceros(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -58,11 +63,14 @@ export default function Terceros() {
       cargar();
       return;
     }
+    setLoading(true);
     try {
       const res = await api.get<ApiResponse<Tercero[]>>(`/terceros/buscar?q=${busqueda}`);
       setTerceros(res.data);
     } catch {
       /* */
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -283,7 +291,9 @@ export default function Terceros() {
             </tr>
           </thead>
           <tbody>
-            {terceros.length === 0 ? (
+            {loading ? (
+              <TableSkeletonRows cols={7} />
+            ) : terceros.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-3 py-4 text-center text-gray-400">
                   No hay terceros registrados
