@@ -29,6 +29,8 @@ export const createClienteSchema = z.object({
   notas_salud: z.string().max(1000).transform(toUpper).optional(),
   instagram: z.string().max(100).transform(toClean).optional(),
   linkedin: z.string().max(200).transform(toClean).optional(),
+  whatsapp: z.string().max(50).transform(toClean).optional(),
+  hace_ejercicio: z.number().int().min(0).max(1).optional(),
   referido_por: z.string().max(20).transform(toClean).optional(),
   referido_por_nombre: z.string().max(150).transform(toUpper).optional(),
 });
@@ -51,6 +53,8 @@ export const updateClienteSchema = z.object({
   notas_salud: z.string().max(1000).transform(toUpper).optional(),
   instagram: z.string().max(100).transform(toClean).optional(),
   linkedin: z.string().max(200).transform(toClean).optional(),
+  whatsapp: z.string().max(50).transform(toClean).optional(),
+  hace_ejercicio: z.number().int().min(0).max(1).optional(),
   referido_por: z.string().max(20).transform(toClean).optional(),
   referido_por_nombre: z.string().max(150).transform(toUpper).optional(),
 });

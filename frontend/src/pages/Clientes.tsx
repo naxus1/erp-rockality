@@ -20,6 +20,8 @@ interface Cliente {
   notas_salud: string | null;
   instagram: string | null;
   linkedin: string | null;
+  whatsapp: string | null;
+  hace_ejercicio: number;
   referido_por: string | null;
   referido_por_nombre: string | null;
   consentimiento_datos: number;
@@ -60,9 +62,11 @@ const FORM_VACIO = {
   notas_salud: '',
   instagram: '',
   linkedin: '',
+  whatsapp: '',
   referido_por: '',
   referido_por_nombre: '',
   consentimiento_datos: 0,
+  hace_ejercicio: 0,
 };
 
 export default function Clientes() {
@@ -265,9 +269,11 @@ export default function Clientes() {
       notas_salud: c.notas_salud || '',
       instagram: c.instagram || '',
       linkedin: c.linkedin || '',
+      whatsapp: c.whatsapp || '',
       referido_por: c.referido_por || '',
       referido_por_nombre: c.referido_por_nombre || '',
       consentimiento_datos: c.consentimiento_datos,
+      hace_ejercicio: c.hace_ejercicio,
     });
     setRefBusqueda('');
     setRefResultados([]);
@@ -311,6 +317,8 @@ export default function Clientes() {
       notas_salud: form.notas_salud || undefined,
       instagram: form.instagram || undefined,
       linkedin: form.linkedin || undefined,
+      whatsapp: form.whatsapp || undefined,
+      hace_ejercicio: form.hace_ejercicio,
       // Enviamos siempre el valor (string vacío = borrar). Si el canal no es
       // "Referido", limpiamos ambos campos.
       referido_por: esReferido ? form.referido_por : '',
@@ -628,7 +636,25 @@ export default function Clientes() {
               className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
             />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">WhatsApp</label>
+            <input
+              type="text"
+              value={form.whatsapp}
+              onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+              placeholder="Número o usuario de WhatsApp"
+              className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
+            />
+          </div>
           <div className="col-span-1 sm:col-span-3 flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.hace_ejercicio === 1}
+                onChange={(e) => setForm({ ...form, hace_ejercicio: e.target.checked ? 1 : 0 })}
+              />
+              Hace ejercicio
+            </label>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -853,6 +879,13 @@ export default function Clientes() {
               <div>
                 <span className="text-gray-500">Canal:</span>{' '}
                 {ficha.cliente.canal_captacion_nombre || '-'}
+              </div>
+              <div>
+                <span className="text-gray-500">WhatsApp:</span> {ficha.cliente.whatsapp || '-'}
+              </div>
+              <div>
+                <span className="text-gray-500">Hace ejercicio:</span>{' '}
+                {ficha.cliente.hace_ejercicio ? 'Sí' : 'No'}
               </div>
             </div>
             {ficha.cliente.notas_salud && (
