@@ -298,6 +298,11 @@ export default function Clientes() {
       return;
     }
 
+    if (!form.canal_captacion_id) {
+      setError('Selecciona "Cómo se enteró" (es obligatorio)');
+      return;
+    }
+
     const fechaNac =
       form.anio_nac && form.mes_nac && form.dia_nac
         ? `${form.anio_nac}-${form.mes_nac.padStart(2, '0')}-${form.dia_nac.padStart(2, '0')}`
@@ -509,7 +514,7 @@ export default function Clientes() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Cómo se enteró</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Cómo se enteró *</label>
             <select
               value={form.canal_captacion_id}
               onChange={(e) => setForm({ ...form, canal_captacion_id: e.target.value })}
