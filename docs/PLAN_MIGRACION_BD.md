@@ -1,9 +1,10 @@
 # Plan de migración de base de datos (SQLite → Postgres gestionado)
 
-Documento de decisión y plan. Estado: **pendiente** (a ejecutar antes de subir
-los datos reales definitivos). Hoy el sistema corre en SQLite sobre EFS, ya
-estabilizado (sin WAL + auto-recuperación + backup), suficiente para la fase de
-prueba con pocos usuarios.
+Documento de decisión y plan. Estado: **HECHO** — se migró a **Neon** (Postgres
+serverless). El backend usa `pg` (async) contra Neon; la Lambda salió de la VPC y
+se eliminó el EFS. Ver la ejecución en `HANDOFF_MIGRACION_NEON.md` y la lección
+#15 en `LECCIONES_DEPLOY.md`. Lo que sigue abajo es el análisis original que
+sustentó la decisión (se conserva como registro).
 
 ## Por qué migrar
 
@@ -41,16 +42,16 @@ reescritura de lógica.
 Alternativas AWS-nativas (se pasan de ~$10/mes, por eso no se eligen ahora):
 Aurora Serverless v2 (~$45+/mes), RDS db.t4g.micro (~$12–15/mes).
 
-## Esfuerzo estimado
+## Esfuerzo estimado (todos los puntos ya EJECUTADOS)
 
-Medio. El acceso a datos está concentrado en `backend/src/repositories/*.ts`
-(11 repos, ~50 funciones) + queries inline en `reportes.routes.ts`. Cambios:
+Medio. El acceso a datos estaba concentrado en `backend/src/repositories/*.ts`
+(11 repos, ~50 funciones) + queries inline en `reportes.routes.ts`. Cambios
+realizados:
 
-1. Reemplazar `better-sqlite3` por un cliente Postgres (`pg` o `postgres.js`).
-2. La API de better-sqlite3 es **síncrona**; Postgres es **async**. Hay que
-   volver `async/await` las funciones de repositorio y sus llamadores. Es el
-   cambio más extenso (mecánico, pero toca muchos archivos).
-3. Ajustes de dialecto SQL:
+1. ✅ Se reemplazó `better-sqlite3` por `pg` (y se quitó `better-sqlite3`).
+2. ✅ Toda la capa de datos y sus llamadores (rutas) pasaron a `async/await`
+   (con un `asyncHandler` para propagar errores en Express 4).
+3. ✅ Ajustes de dialecto SQL:
    - `datetime('now')` / `julianday()` / `strftime()` → equivalentes Postgres
      (`now()`, `age()`, `date_trunc`, `EXTRACT`, `CURRENT_DATE`).
    - `INTEGER PRIMARY KEY AUTOINCREMENT` → `SERIAL` / `GENERATED AS IDENTITY`.
@@ -59,16 +60,17 @@ Medio. El acceso a datos está concentrado en `backend/src/repositories/*.ts`
      igual (`CREATE UNIQUE INDEX ... WHERE estado = 'abierta'`).
    - `db.transaction(() => ...)` → transacciones async (`BEGIN/COMMIT`).
    - Búsqueda `UPPER(col) LIKE` → funciona igual (o usar `ILIKE`).
-4. Cifrado (AES-GCM) y HMAC de teléfono: **sin cambios** (es a nivel app).
-5. Migraciones: portar los 13 `.sql` al dialecto Postgres (o usar una
-   herramienta de migraciones como node-pg-migrate).
-6. Infra: quitar EFS, VPC, subredes privadas y el mount de la Lambda; añadir la
-   cadena de conexión de Neon/Supabase como secreto/env var.
+4. ✅ Cifrado (AES-GCM) y HMAC de teléfono: **sin cambios** (es a nivel app).
+5. ✅ Migraciones: se consolidaron los 13 `.sql` en un único
+   `backend/src/db/postgres/schema.sql` idempotente (se aplica al arrancar).
+6. ✅ Infra: se quitaron EFS, VPC, subredes y el mount de la Lambda; la
+   `DATABASE_URL` de Neon se inyecta como parámetro `DatabaseUrl` (desde el
+   GitHub Secret `DATABASE_URL`).
 
 ## Momento adecuado
 
-Hacerlo **antes** de cargar los datos reales definitivos, para no migrar dos
-veces. Mientras tanto, SQLite estabilizado cubre la fase de prueba.
+Se hizo **antes** de cargar los datos reales definitivos (la base arrancó limpia
+en Neon, solo con seeds), justo como se planeó, para no migrar dos veces.
 
 ## Costo tras migrar (referencia)
 

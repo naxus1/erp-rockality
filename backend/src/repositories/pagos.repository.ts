@@ -4,7 +4,7 @@
  * Registra pagos parciales o completos vinculados a una venta.
  * Actualiza el estado de la venta automáticamente cuando se completa el pago.
  */
-import { getDatabase } from '../db/connection.js';
+import { query, withTransaction, type Executor } from '../db/connection.js';
 import { registrarMovimientoEfectivo } from './caja.repository.js';
 
 export interface Pago {
@@ -38,65 +38,63 @@ const SELECT_PAGO = `
   JOIN metodos_pago mp ON p.metodo_pago_id = mp.id
 `;
 
-export function findByVenta(ventaId: number): PagoConMetodo[] {
-  const db = getDatabase();
-  return db
-    .prepare(`${SELECT_PAGO} WHERE p.venta_id = ? ORDER BY p.fecha`)
-    .all(ventaId) as PagoConMetodo[];
+export async function findByVenta(ventaId: number): Promise<PagoConMetodo[]> {
+  const res = await query<PagoConMetodo>(`${SELECT_PAGO} WHERE p.venta_id = $1 ORDER BY p.fecha`, [
+    ventaId,
+  ]);
+  return res.rows;
 }
 
-export function findById(id: number): PagoConMetodo | undefined {
-  const db = getDatabase();
-  return db.prepare(`${SELECT_PAGO} WHERE p.id = ?`).get(id) as PagoConMetodo | undefined;
+export async function findById(id: number): Promise<PagoConMetodo | undefined> {
+  const res = await query<PagoConMetodo>(`${SELECT_PAGO} WHERE p.id = $1`, [id]);
+  return res.rows[0];
 }
 
-/** Suma total de pagos realizados a una venta */
-export function totalPagado(ventaId: number): number {
-  const db = getDatabase();
-  const result = db
-    .prepare('SELECT COALESCE(SUM(monto), 0) as total FROM pagos WHERE venta_id = ?')
-    .get(ventaId) as { total: number };
-  return result.total;
+/** Suma total de pagos realizados a una venta (opcionalmente sobre un client de tx). */
+export async function totalPagado(ventaId: number, db: Executor = poolExecutor()): Promise<number> {
+  const res = await db.query<{ total: number }>(
+    'SELECT COALESCE(SUM(monto), 0)::bigint as total FROM pagos WHERE venta_id = $1',
+    [ventaId],
+  );
+  return Number(res.rows[0]!.total);
 }
 
 /**
  * Registra un pago y actualiza el estado de la venta si ya está completa.
  */
-export function create(data: CreatePagoData): PagoConMetodo {
-  const db = getDatabase();
-
-  const registrarPago = db.transaction(() => {
+export async function create(data: CreatePagoData): Promise<PagoConMetodo> {
+  const pagoId = await withTransaction(async (client) => {
     // Insertar el pago
-    const result = db
-      .prepare(
-        `INSERT INTO pagos (venta_id, monto, metodo_pago_id, referencia, notas, created_by)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
+    const insert = await client.query<{ id: number }>(
+      `INSERT INTO pagos (venta_id, monto, metodo_pago_id, referencia, notas, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [
         data.venta_id,
         data.monto,
         data.metodo_pago_id,
         data.referencia || null,
         data.notas || null,
         data.created_by || null,
-      );
-
-    const pagoId = Number(result.lastInsertRowid);
+      ],
+    );
+    const id = insert.rows[0]!.id;
 
     // Verificar si la venta ya está pagada por completo
-    const venta = db.prepare('SELECT total FROM ventas WHERE id = ?').get(data.venta_id) as
-      | { total: number }
-      | undefined;
+    const ventaRes = await client.query<{ total: number }>(
+      'SELECT total FROM ventas WHERE id = $1',
+      [data.venta_id],
+    );
+    const venta = ventaRes.rows[0];
 
     if (venta) {
-      const pagado = totalPagado(data.venta_id);
+      const pagado = await totalPagado(data.venta_id, client);
       if (pagado >= venta.total) {
-        db.prepare("UPDATE ventas SET estado = 'pagada' WHERE id = ?").run(data.venta_id);
+        await client.query("UPDATE ventas SET estado = 'pagada' WHERE id = $1", [data.venta_id]);
       }
     }
 
     // Caja: si el pago fue en efectivo y hay sesión abierta, entra a la caja.
-    registrarMovimientoEfectivo(db, {
+    await registrarMovimientoEfectivo(client, {
       metodo_pago_id: data.metodo_pago_id,
       tipo: 'ingreso',
       monto: data.monto,
@@ -107,20 +105,23 @@ export function create(data: CreatePagoData): PagoConMetodo {
       created_by: data.created_by,
     });
 
-    return pagoId;
+    return id;
   });
 
-  const pagoId = registrarPago();
-  return findById(pagoId)!;
+  return (await findById(pagoId))!;
 }
 
 /** Saldo pendiente de una venta */
-export function saldoPendiente(ventaId: number): number {
-  const db = getDatabase();
-  const venta = db.prepare('SELECT total FROM ventas WHERE id = ?').get(ventaId) as
-    | { total: number }
-    | undefined;
-
+export async function saldoPendiente(ventaId: number): Promise<number> {
+  const ventaRes = await query<{ total: number }>('SELECT total FROM ventas WHERE id = $1', [
+    ventaId,
+  ]);
+  const venta = ventaRes.rows[0];
   if (!venta) return 0;
-  return venta.total - totalPagado(ventaId);
+  return venta.total - (await totalPagado(ventaId));
+}
+
+/** Executor sobre el pool (para totalPagado fuera de una transacción). */
+function poolExecutor(): Executor {
+  return { query: (text, params) => query(text, params as unknown[]) };
 }

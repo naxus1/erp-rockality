@@ -32,8 +32,9 @@ env:
 jobs:
   deploy:
     name: Deploy a AWS
-    # Runner arm64 nativo: coincide con la Lambda (arm64) y compila better-sqlite3
-    # sin emulación QEMU (que hacía el sam build --use-container lentísimo).
+    # Runner arm64 nativo: coincide con la Lambda (arm64). Con la migración a Neon
+    # el backend usa `pg` (JavaScript puro, sin binarios nativos), así que el
+    # `sam build` ya NO necesita contenedor.
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout código
@@ -67,10 +68,14 @@ jobs:
       - name: Build backend
         run: npm run build:backend
 
-      - name: SAM build (con contenedor para el binario nativo de better-sqlite3)
-        run: sam build -t infra/template.yaml --use-container
+      # pg es JS puro: sam build sin --use-container (más rápido, sin Docker).
+      - name: SAM build
+        run: sam build -t infra/template.yaml
 
       - name: SAM deploy
+        env:
+          # Cadena de conexión de Neon (GitHub Secret). No vive en el repo.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           sam deploy -t .aws-sam/build/template.yaml \
             --stack-name "$STACK_NAME" \
@@ -80,7 +85,8 @@ jobs:
             --parameter-overrides \
               "Stage=prod" \
               "BudgetEmail=$BUDGET_EMAIL" \
-              "AllowedOrigins=$CLOUDFRONT_ORIGIN"
+              "AllowedOrigins=$CLOUDFRONT_ORIGIN" \
+              "DatabaseUrl=$DATABASE_URL"
 
       # ── Frontend ──
       - name: Build frontend
@@ -97,8 +103,8 @@ jobs:
 
       - name: Health check post-deploy
         run: |
-          # Reintentos: tras el deploy la Lambda arranca en frío y resuelve la
-          # clave de cifrado desde Secrets Manager, así que damos margen.
+          # Reintentos: tras el deploy la Lambda arranca en frío (resuelve la
+          # clave de cifrado, conecta a Neon y aplica el esquema), damos margen.
           URL=https://gre6acehzf.execute-api.us-east-1.amazonaws.com/api/health
           for i in $(seq 1 10); do
             code=$(curl -s -o /tmp/health.txt -w '%{http_code}' "$URL" || echo 000)

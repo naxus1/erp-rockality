@@ -1,5 +1,6 @@
 [
   "Stage=prod",
   "BudgetEmail=naxus1@gmail.com",
-  "AllowedOrigins=https://d2a6va7cqw90db.cloudfront.net"
+  "AllowedOrigins=https://d2a6va7cqw90db.cloudfront.net",
+  "DatabaseUrl=REEMPLAZAR_SOLO_EN_DEPLOY_MANUAL"
 ]

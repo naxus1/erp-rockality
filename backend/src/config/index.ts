@@ -45,10 +45,20 @@ if (isProduction && !cognitoConfigured) {
   );
 }
 
+// Conexión a PostgreSQL (Neon). En producción la inyecta el entorno (Secrets
+// Manager -> env var). En desarrollo se toma de backend/.env. Es OBLIGATORIA en
+// producción (fail-fast): sin base de datos no hay servicio.
+const databaseUrl = process.env.DATABASE_URL || '';
+if (isProduction && !databaseUrl) {
+  throw new Error(
+    'DATABASE_URL es obligatoria en producción. Configúrala en el entorno (AWS Secrets Manager).',
+  );
+}
+
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
-  dbPath: process.env.DB_PATH || path.resolve(__dirname, '../../data/dev.db'),
+  databaseUrl,
   allowedOrigins: process.env.ALLOWED_ORIGINS || 'http://localhost:5173',
   isProduction,
   encryptionKey,
