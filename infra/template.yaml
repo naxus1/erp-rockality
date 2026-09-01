@@ -128,6 +128,10 @@ Resources:
       Encrypted: true # cifrado en reposo con KMS (aws/elasticfilesystem)
       PerformanceMode: generalPurpose
       ThroughputMode: bursting
+      # Backup automático de EFS (AWS Backup gestionado). Da un punto de
+      # restauración diario del SQLite ante corrupción/borrado accidental.
+      BackupPolicy:
+        Status: ENABLED
       FileSystemTags:
         - { Key: Name, Value: !Sub 'rockality-${Stage}-efs' }
 
@@ -271,11 +275,15 @@ Resources:
       Handler: dist/handler.handler
       CodeUri: ../backend/
       Architectures: [arm64] # Graviton: mas barato y evita cross-build en Mac ARM
-      # NOTA: idealmente ReservedConcurrentExecutions=1 para SQLite (una instancia
-      # a la vez). Las cuentas nuevas exigen dejar >=10 de concurrencia sin reservar,
-      # asi que se omite por ahora. Con 2-10 usuarios el riesgo de escritura
-      # concurrente es minimo. Solicitar aumento de limite para reactivarlo, o
-      # migrar a Postgres si el uso crece.
+      # CONCURRENCIA: idealmente ReservedConcurrentExecutions=1 para que solo UNA
+      # instancia escriba el SQLite de EFS a la vez (evita corrupcion). Pero la
+      # cuenta esta capada a 10 de concurrencia total y AWS exige dejar >=10 sin
+      # reservar, asi que reservar 1 es rechazado hasta que el limite suba (se
+      # levanta solo con el tiempo/uso de la cuenta). Mientras tanto, la
+      # proteccion la dan: (1) SIN WAL en connection.ts (journal TRUNCATE, seguro
+      # en NFS) y (2) auto-recuperacion si el archivo se corrompe. Cuando el
+      # limite de cuenta supere 10, descomentar:
+      # ReservedConcurrentExecutions: 1
       VpcConfig:
         SecurityGroupIds: [!Ref LambdaSecurityGroup]
         SubnetIds: [!Ref PrivateSubnet1, !Ref PrivateSubnet2]
