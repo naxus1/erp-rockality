@@ -24,46 +24,92 @@ let db: Database.Database | null = null;
  * crea una base nueva, para que el servicio se recupere solo (las migraciones
  * recrean el esquema). Devuelve la instancia abierta.
  */
+/** Borra los sidecars -wal/-shm/-journal residuales (p. ej. de un modo WAL
+ *  anterior sobre EFS). Se hace ANTES de abrir para evitar locks heredados. */
+function limpiarSidecars(dbPath: string): void {
+  for (const suffix of ['-wal', '-shm', '-journal']) {
+    const f = `${dbPath}${suffix}`;
+    try {
+      if (fs.existsSync(f)) fs.unlinkSync(f);
+    } catch {
+      /* si no se puede, continuar */
+    }
+  }
+}
+
+/** Aparta el archivo corrupto (y sus sidecars) con sufijo .corrupt-<ts>. */
+function apartarCorrupta(dbPath: string): void {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  for (const suffix of ['', '-wal', '-shm', '-journal']) {
+    const f = `${dbPath}${suffix}`;
+    if (fs.existsSync(f)) {
+      try {
+        fs.renameSync(f, `${f}.corrupt-${stamp}`);
+      } catch {
+        try {
+          fs.unlinkSync(f);
+        } catch {
+          /* último recurso: continuar */
+        }
+      }
+    }
+  }
+}
+
+function sleepSync(ms: number): void {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    /* espera activa breve (solo en arranque; evita depender de async aquí) */
+  }
+}
+
 function openWithRecovery(dbPath: string): Database.Database {
   const abrir = () => {
     const instance = new Database(dbPath);
-    // Pragmas seguros para EFS/NFS (sin WAL).
+    // busy_timeout PRIMERO: si otra instancia tiene el lock, espera en vez de
+    // fallar de inmediato. Clave sobre EFS con varias Lambdas arrancando.
+    instance.pragma('busy_timeout = 15000');
+    // Migrar de cualquier modo WAL previo a TRUNCATE (seguro en NFS/EFS).
     instance.pragma('journal_mode = TRUNCATE');
-    instance.pragma('busy_timeout = 10000'); // espera hasta 10s si está ocupada
-    instance.pragma('synchronous = FULL'); // máxima durabilidad sobre EFS
+    instance.pragma('synchronous = FULL');
     instance.pragma('foreign_keys = ON');
-    // Fuerza una lectura real del header para detectar corrupción temprano.
+    // Lectura real del header: detecta corrupción temprano.
     instance.prepare('SELECT count(*) FROM sqlite_master').get();
     return instance;
   };
 
-  try {
-    return abrir();
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    const corrupta = /not a database|malformed|disk I\/O|file is encrypted/i.test(msg);
-    if (!corrupta) throw err;
+  // Limpia sidecars WAL residuales antes del primer intento.
+  limpiarSidecars(dbPath);
 
-    // Aparta el archivo corrupto (y sus sidecars) y crea uno nuevo.
-    console.error(`[DB] Base corrupta detectada (${msg}). Reinicializando...`);
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    for (const suffix of ['', '-wal', '-shm', '-journal']) {
-      const f = `${dbPath}${suffix}`;
-      if (fs.existsSync(f)) {
-        try {
-          fs.renameSync(f, `${f}.corrupt-${stamp}`);
-        } catch {
-          // Si no se puede renombrar (p. ej. sidecar bloqueado), intentar borrar.
-          try {
-            fs.unlinkSync(f);
-          } catch {
-            /* último recurso: continuar */
-          }
-        }
+  const MAX_INTENTOS = 5;
+  let ultimoError: unknown;
+  for (let intento = 1; intento <= MAX_INTENTOS; intento++) {
+    try {
+      return abrir();
+    } catch (err) {
+      ultimoError = err;
+      const msg = err instanceof Error ? err.message : String(err);
+
+      if (/not a database|malformed|disk I\/O|file is encrypted/i.test(msg)) {
+        // Corrupción: apartar y recrear.
+        console.error(`[DB] Base corrupta (${msg}). Reinicializando...`);
+        apartarCorrupta(dbPath);
+        return abrir();
       }
+
+      if (/database is locked|SQLITE_BUSY/i.test(msg)) {
+        // Lock transitorio (otra instancia arrancando): limpiar sidecars y
+        // reintentar con backoff.
+        console.error(`[DB] Bloqueada (intento ${intento}/${MAX_INTENTOS}). Reintentando...`);
+        limpiarSidecars(dbPath);
+        sleepSync(500 * intento);
+        continue;
+      }
+
+      throw err; // otro error: propagar
     }
-    return abrir();
   }
+  throw ultimoError;
 }
 
 export function getDatabase(): Database.Database {
