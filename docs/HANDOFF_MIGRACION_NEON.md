@@ -203,3 +203,38 @@ Actualizar PLAN_MIGRACION_BD.md a "hecho".
    (DATABASE_URL está en backend/.env).
 3. Empezar por Fase 1 (deps + connection.ts + esquema Postgres), validar creando el
    esquema en Neon, y avanzar fase por fase con el flujo git.
+
+---
+
+## ACTUALIZACIÓN — Fase 1 COMPLETADA y validada (sesión posterior)
+
+Hecho y verificado en vivo:
+
+- **`pg` y `@types/pg` instalados** en backend (better-sqlite3 aún presente, se
+  quita en Fase 2 cuando ya no se use).
+- **Esquema Postgres portado**: `backend/src/db/postgres/schema.sql` (idempotente,
+  IF NOT EXISTS + ON CONFLICT). Traducciones aplicadas: AUTOINCREMENT ->
+  GENERATED ALWAYS AS IDENTITY; timestamps de auditoría -> TIMESTAMPTZ now();
+  fechas de negocio -> TEXT (YYYY-MM-DD); montos -> BIGINT; booleanos siguen como
+  INTEGER 0/1; índice único parcial de caja igual; seeds con ON CONFLICT DO NOTHING;
+  plan "Semana cortesía" insertado si no existe.
+- **Aplicado en Neon y VALIDADO**: 26 tablas creadas, seeds correctos (metodos_pago
+  ids 1-5, plan cortesía), índice único parcial idx_caja_una_abierta presente.
+  Comando usado: `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f backend/src/db/postgres/schema.sql`.
+
+PENDIENTE (Fase 2 en adelante) — requiere herramientas de edición de código:
+
+- Reescribir `connection.ts` a pool de `pg` (async) + helper query/tx.
+- Convertir los 11 repositorios de sync (better-sqlite3) a async/await con `pg`
+  (placeholders $1.., RETURNING id, dialecto: julianday/strftime/datetime ->
+  Postgres, edad con date_part, UPPER/ILIKE). Las 6 transacciones con client
+  dedicado (BEGIN/COMMIT/ROLLBACK). Enganche de caja recibe el client de la tx.
+- Propagar async a rutas + reportes.routes (dashboard/conciliación) + audit middleware.
+- Infra: sacar Lambda de VPC, quitar EFS, DATABASE_URL a Secrets Manager (dynamic ref),
+  quitar DB_PATH; el CD puede quitar `--use-container` (pg es JS puro).
+- Ejecutar el schema.sql contra Neon al desplegar (o dejarlo ya aplicado como ahora).
+- Probar local contra Neon, build+lint, flujo git, verificar producción.
+- Rotar password de Neon (se filtró en chat) al terminar.
+
+NOTA: el esquema YA está aplicado en la base `neondb` de Neon. Si se reaplica, es
+idempotente (no duplica). La base sigue VACÍA de datos de negocio (solo seeds).
