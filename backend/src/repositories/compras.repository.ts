@@ -6,7 +6,7 @@
  *  2. Se suma stock de cada producto
  *  3. Se genera un gasto automático vinculado
  */
-import { getDatabase } from '../db/connection.js';
+import { query, withTransaction } from '../db/connection.js';
 import { registrarMovimientoEfectivo } from './caja.repository.js';
 
 export interface Compra {
@@ -65,50 +65,48 @@ const SELECT_COMPRA = `
   JOIN terceros t ON c.tercero_nit = t.nit
 `;
 
-export function findAll(filters?: { desde?: string; hasta?: string }): CompraConProveedor[] {
-  const db = getDatabase();
+export async function findAll(filters?: {
+  desde?: string;
+  hasta?: string;
+}): Promise<CompraConProveedor[]> {
   const conditions: string[] = [];
   const params: (string | number)[] = [];
 
   if (filters?.desde) {
-    conditions.push('c.fecha >= ?');
     params.push(filters.desde);
+    conditions.push(`c.fecha >= $${params.length}`);
   }
   if (filters?.hasta) {
-    conditions.push('c.fecha <= ?');
     params.push(filters.hasta);
+    conditions.push(`c.fecha <= $${params.length}`);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  return db
-    .prepare(`${SELECT_COMPRA} ${where} ORDER BY c.fecha DESC LIMIT 100`)
-    .all(...params) as CompraConProveedor[];
+  const res = await query<CompraConProveedor>(
+    `${SELECT_COMPRA} ${where} ORDER BY c.fecha DESC LIMIT 100`,
+    params,
+  );
+  return res.rows;
 }
 
-export function findById(id: number): CompraDetallada | undefined {
-  const db = getDatabase();
-
-  const compra = db.prepare(`${SELECT_COMPRA} WHERE c.id = ?`).get(id) as
-    | CompraConProveedor
-    | undefined;
+export async function findById(id: number): Promise<CompraDetallada | undefined> {
+  const compraRes = await query<CompraConProveedor>(`${SELECT_COMPRA} WHERE c.id = $1`, [id]);
+  const compra = compraRes.rows[0];
   if (!compra) return undefined;
 
-  const items = db
-    .prepare(
-      `SELECT dc.*, p.nombre as producto_nombre
+  const itemsRes = await query<CompraDetallada['items'][number]>(
+    `SELECT dc.*, p.nombre as producto_nombre
        FROM detalle_compra dc
        JOIN productos p ON dc.producto_sku = p.sku
-       WHERE dc.compra_id = ?`,
-    )
-    .all(id) as CompraDetallada['items'];
+       WHERE dc.compra_id = $1`,
+    [id],
+  );
 
-  return { ...compra, items };
+  return { ...compra, items: itemsRes.rows };
 }
 
-export function create(data: CreateCompraData): CompraDetallada {
-  const db = getDatabase();
-
-  const crearCompra = db.transaction(() => {
+export async function create(data: CreateCompraData): Promise<CompraDetallada> {
+  const compraId = await withTransaction(async (client) => {
     // Calcular subtotal
     const subtotal = data.items.reduce(
       (sum, item) => sum + item.precio_unitario * item.cantidad,
@@ -118,12 +116,10 @@ export function create(data: CreateCompraData): CompraDetallada {
     const total = subtotal + iva;
 
     // 1. Crear gasto automático
-    const gastoResult = db
-      .prepare(
-        `INSERT INTO gastos (tercero_nit, gerencia_id, tipo_gasto_id, categoria_gasto_id, descripcion, valor_base, iva, total, periodo_mes, periodo_anio, fecha_pago, metodo_pago_id, referencia_pago, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
+    const gastoResult = await client.query<{ id: number }>(
+      `INSERT INTO gastos (tercero_nit, gerencia_id, tipo_gasto_id, categoria_gasto_id, descripcion, valor_base, iva, total, periodo_mes, periodo_anio, fecha_pago, metodo_pago_id, referencia_pago, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+      [
         data.tercero_nit,
         data.gerencia_id || 2, // Default: Administrativa
         data.tipo_gasto_id || 2, // Default: Gastos generales
@@ -138,12 +134,13 @@ export function create(data: CreateCompraData): CompraDetallada {
         data.metodo_pago_id || null,
         data.factura_proveedor || null,
         data.created_by || null,
-      );
+      ],
+    );
 
-    const gastoId = Number(gastoResult.lastInsertRowid);
+    const gastoId = gastoResult.rows[0]!.id;
 
     // Caja: si la compra se pagó en efectivo y hay sesión abierta, sale de la caja.
-    registrarMovimientoEfectivo(db, {
+    await registrarMovimientoEfectivo(client, {
       metodo_pago_id: data.metodo_pago_id,
       tipo: 'egreso',
       monto: total,
@@ -155,12 +152,10 @@ export function create(data: CreateCompraData): CompraDetallada {
     });
 
     // 2. Crear compra
-    const compraResult = db
-      .prepare(
-        `INSERT INTO compras (tercero_nit, fecha, factura_proveedor, subtotal, iva, total, gasto_id, notas, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
+    const compraResult = await client.query<{ id: number }>(
+      `INSERT INTO compras (tercero_nit, fecha, factura_proveedor, subtotal, iva, total, gasto_id, notas, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [
         data.tercero_nit,
         data.fecha || new Date().toISOString().split('T')[0],
         data.factura_proveedor || null,
@@ -170,64 +165,66 @@ export function create(data: CreateCompraData): CompraDetallada {
         gastoId,
         data.notas || null,
         data.created_by || null,
-      );
+      ],
+    );
 
-    const compraId = Number(compraResult.lastInsertRowid);
+    const compra_id = compraResult.rows[0]!.id;
 
     // 3. Insertar detalle y sumar stock
     for (const item of data.items) {
-      db.prepare(
+      await client.query(
         `INSERT INTO detalle_compra (compra_id, producto_sku, cantidad, precio_unitario, subtotal)
-         VALUES (?, ?, ?, ?, ?)`,
-      ).run(
-        compraId,
-        item.producto_sku,
-        item.cantidad,
-        item.precio_unitario,
-        item.precio_unitario * item.cantidad,
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          compra_id,
+          item.producto_sku,
+          item.cantidad,
+          item.precio_unitario,
+          item.precio_unitario * item.cantidad,
+        ],
       );
 
       // Sumar stock
-      db.prepare(
-        "UPDATE productos SET stock_actual = stock_actual + ?, updated_at = datetime('now'), updated_by = ? WHERE sku = ?",
-      ).run(item.cantidad, data.created_by || null, item.producto_sku);
+      await client.query(
+        'UPDATE productos SET stock_actual = stock_actual + $1, updated_at = now(), updated_by = $2 WHERE sku = $3',
+        [item.cantidad, data.created_by || null, item.producto_sku],
+      );
     }
 
-    return compraId;
+    return compra_id;
   });
 
-  const compraId = crearCompra();
-  return findById(compraId)!;
+  return (await findById(compraId))!;
 }
 
-export function anular(id: number, updatedBy?: string): boolean {
-  const db = getDatabase();
-
-  const anularCompra = db.transaction(() => {
-    const compra = db.prepare('SELECT estado, gasto_id FROM compras WHERE id = ?').get(id) as
-      | { estado: string; gasto_id: number | null }
-      | undefined;
+export async function anular(id: number, updatedBy?: string): Promise<boolean> {
+  return withTransaction(async (client) => {
+    const compraRes = await client.query<{ estado: string; gasto_id: number | null }>(
+      'SELECT estado, gasto_id FROM compras WHERE id = $1',
+      [id],
+    );
+    const compra = compraRes.rows[0];
     if (!compra || compra.estado === 'anulada') return false;
 
     // Restar stock
-    const items = db
-      .prepare('SELECT producto_sku, cantidad FROM detalle_compra WHERE compra_id = ?')
-      .all(id) as Array<{ producto_sku: string; cantidad: number }>;
-    for (const item of items) {
-      db.prepare(
-        "UPDATE productos SET stock_actual = stock_actual - ?, updated_at = datetime('now'), updated_by = ? WHERE sku = ?",
-      ).run(item.cantidad, updatedBy || null, item.producto_sku);
+    const itemsRes = await client.query<{ producto_sku: string; cantidad: number }>(
+      'SELECT producto_sku, cantidad FROM detalle_compra WHERE compra_id = $1',
+      [id],
+    );
+    for (const item of itemsRes.rows) {
+      await client.query(
+        'UPDATE productos SET stock_actual = stock_actual - $1, updated_at = now(), updated_by = $2 WHERE sku = $3',
+        [item.cantidad, updatedBy || null, item.producto_sku],
+      );
     }
 
     // Anular gasto asociado
     if (compra.gasto_id) {
-      db.prepare("UPDATE gastos SET estado = 'anulado' WHERE id = ?").run(compra.gasto_id);
+      await client.query("UPDATE gastos SET estado = 'anulado' WHERE id = $1", [compra.gasto_id]);
     }
 
     // Anular compra
-    db.prepare("UPDATE compras SET estado = 'anulada' WHERE id = ?").run(id);
+    await client.query("UPDATE compras SET estado = 'anulada' WHERE id = $1", [id]);
     return true;
   });
-
-  return anularCompra();
 }

@@ -1,10 +1,10 @@
 /**
  * REPOSITORY — Categorías de Producto
  *
- * Queries directas a SQLite para la tabla categorias_producto.
+ * Queries directas a PostgreSQL para la tabla categorias_producto.
  * Es la ÚNICA capa que toca la base de datos.
  */
-import { getDatabase } from '../db/connection.js';
+import { query, queryOne } from '../db/connection.js';
 
 export interface CategoriaProducto {
   id: number;
@@ -13,48 +13,41 @@ export interface CategoriaProducto {
   descripcion: string | null;
 }
 
-export function findAll(): CategoriaProducto[] {
-  const db = getDatabase();
-  return db
-    .prepare('SELECT * FROM categorias_producto ORDER BY nombre')
-    .all() as CategoriaProducto[];
+export async function findAll(): Promise<CategoriaProducto[]> {
+  const res = await query<CategoriaProducto>('SELECT * FROM categorias_producto ORDER BY nombre');
+  return res.rows;
 }
 
-export function findById(id: number): CategoriaProducto | undefined {
-  const db = getDatabase();
-  return db.prepare('SELECT * FROM categorias_producto WHERE id = ?').get(id) as
-    | CategoriaProducto
-    | undefined;
+export async function findById(id: number): Promise<CategoriaProducto | undefined> {
+  const res = await query<CategoriaProducto>('SELECT * FROM categorias_producto WHERE id = $1', [
+    id,
+  ]);
+  return res.rows[0];
 }
 
-export function create(data: {
+export async function create(data: {
   nombre: string;
   prefijo_sku?: string;
   descripcion?: string;
-}): CategoriaProducto {
-  const db = getDatabase();
+}): Promise<CategoriaProducto> {
   // Auto-generar prefijo si no se proporciona (primeras 4 letras del nombre en mayúscula)
   const prefijo = data.prefijo_sku || data.nombre.substring(0, 4).toUpperCase().replace(/\s/g, '');
-  const result = db
-    .prepare('INSERT INTO categorias_producto (nombre, prefijo_sku, descripcion) VALUES (?, ?, ?)')
-    .run(data.nombre, prefijo, data.descripcion || null);
-
-  return findById(Number(result.lastInsertRowid))!;
+  return queryOne<CategoriaProducto>(
+    'INSERT INTO categorias_producto (nombre, prefijo_sku, descripcion) VALUES ($1, $2, $3) RETURNING *',
+    [data.nombre, prefijo, data.descripcion || null],
+  );
 }
 
-export function update(
+export async function update(
   id: number,
   data: { nombre?: string; descripcion?: string },
-): CategoriaProducto | undefined {
-  const db = getDatabase();
-  const current = findById(id);
+): Promise<CategoriaProducto | undefined> {
+  const current = await findById(id);
   if (!current) return undefined;
 
-  db.prepare('UPDATE categorias_producto SET nombre = ?, descripcion = ? WHERE id = ?').run(
-    data.nombre ?? current.nombre,
-    data.descripcion ?? current.descripcion,
-    id,
+  const res = await query<CategoriaProducto>(
+    'UPDATE categorias_producto SET nombre = $1, descripcion = $2 WHERE id = $3 RETURNING *',
+    [data.nombre ?? current.nombre, data.descripcion ?? current.descripcion, id],
   );
-
-  return findById(id);
+  return res.rows[0];
 }

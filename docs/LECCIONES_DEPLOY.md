@@ -4,10 +4,15 @@ Registro de los problemas reales que aparecieron al desplegar el ERP a AWS por
 primera vez, con su causa y solución. Sirve como **checklist preventivo** para no
 repetirlos en otros proyectos (p. ej. oil & gas).
 
-Arquitectura del deploy: S3+CloudFront (frontend) -> API Gateway (HTTP API + JWT
-authorizer) -> Lambda (Express, arm64, en VPC privada sin internet) -> EFS (SQLite)
+Arquitectura del deploy (actual): S3+CloudFront (frontend) -> API Gateway
+(HTTP API + JWT authorizer) -> Lambda (Express, arm64, FUERA de VPC) -> Neon
+(Postgres serverless externo, por TLS). Secrets Manager (clave de cifrado). IaC
+con AWS SAM.
 
-- Secrets Manager. IaC con AWS SAM.
+> Nota histórica: al inicio la base era SQLite sobre EFS y la Lambda vivía en una
+> VPC privada. Tras una corrupción del SQLite (#14) se migró a Neon (#15): se
+> quitaron VPC y EFS. Varias lecciones de abajo (#4, #5, #6, #14 y partes de #2)
+> son de esa etapa SQLite/EFS y quedan como referencia.
 
 ## Resumen (checklist rápido para el próximo proyecto)
 
@@ -202,6 +207,58 @@ sqlite_master`; si lanza "not a database/malformed/disk I/O", el archivo
   concurrencia real. Para algo más que unos pocos usuarios, usar una base
   gestionada (DynamoDB, o Aurora Serverless v2 / RDS Postgres). Si se mantiene
   SQLite: NUNCA WAL sobre EFS, concurrencia reservada = 1, y backups.
+
+### 15. Migración de SQLite/EFS a Neon (Postgres serverless externo)
+
+- **Contexto**: tras la corrupción de SQLite sobre EFS (#14), se migró la base a
+  **Neon** (Postgres serverless, plan free). Decisión y comparativa en
+  `PLAN_MIGRACION_BD.md` y `COMPARATIVA_SUPABASE_NEON.md`; se descartó DynamoDB
+  por lo relacional del ERP (JOINs, agregaciones, transacciones, LIKE, IDs
+  autoincrementales). El detalle de la ejecución está en `HANDOFF_MIGRACION_NEON.md`.
+- **Qué implicó (por fases)**:
+  1. Portar el esquema (13 migraciones SQLite -> un `schema.sql` Postgres
+     idempotente): `INTEGER AUTOINCREMENT` -> `GENERATED ALWAYS AS IDENTITY`;
+     timestamps de auditoría -> `TIMESTAMPTZ now()`; montos -> `BIGINT`; booleanos
+     siguen como `INTEGER 0/1`; índice único parcial de caja igual; seeds con
+     `ON CONFLICT DO NOTHING`.
+  2. Reescribir la capa de datos de **síncrona** (better-sqlite3) a **async**
+     (`pg`): 11 repos + queries inline. Placeholders `$1..`, `RETURNING id`,
+     transacciones con un client dedicado (`BEGIN/COMMIT/ROLLBACK`). Dialecto:
+     `datetime('now')`->`now()`, `julianday(a)-julianday('now')`->
+     `(a::date - CURRENT_DATE)`, edad con `date_part('year', age(...))`,
+     `strftime`->`to_char`, `lastInsertRowid`->`RETURNING`, `changes`->`rowCount`.
+  3. Infra: quitar VPC, subredes, SGs y EFS; la Lambda sale de la VPC (salida a
+     internet nativa para llegar a Neon por TLS). El CD ya NO usa
+     `sam build --use-container` (pg es JS puro, sin binario nativo).
+- **Trampas concretas que aparecieron**:
+  - **BIGINT llega como string**: el driver `pg` devuelve `INT8` (OID 20) como
+    string para no perder precisión. Los montos en centavos y conteos caben de
+    sobra en `Number`, así que se fijó `types.setTypeParser(INT8, Number)` una vez
+    en `connection.ts` (evita castear en cada repo y conserva el tipo `number`
+    que daba SQLite). Si hubiera enteros > 2^53, NO hacer esto.
+  - **Express 4 no captura promesas rechazadas**: un `await` que lanza en un
+    handler async deja la request colgada. Se añadió un `asyncHandler` que hace
+    `fn(req,res,next).catch(next)` y se envolvió cada ruta.
+  - **`ssl` para Neon**: la connection string trae `sslmode=require`; además se
+    pasó `ssl: { rejectUnauthorized: false }` en el Pool por si el entorno no
+    tiene el CA raíz. (pg avisa que `require` se tratará como `verify-full` en una
+    versión futura; es solo warning, la conexión funciona.)
+  - **Errores de unicidad**: `INSERT OR IGNORE`/catch de SQLite -> detectar el
+    código de error de pg **`23505`** (unique_violation) en catálogos/usuarios.
+  - **`DATABASE_URL` fuera del repo**: se pasa como parámetro `DatabaseUrl`
+    (`NoEcho: true`) desde un **GitHub Secret** `DATABASE_URL` (el CD lo inyecta),
+    no como secreto autogenerado de CloudFormation ni en `parameters/*.json`.
+  - **Aplicar el esquema al arrancar**: `init.ts` corre `schema.sql` (idempotente)
+    en cada cold start. Recordar copiar `postgres/*.sql` a `dist/` en el build.
+- **Costo/robustez**: Neon free = ~$0/mes, concurrencia real (adiós corrupción por
+  NFS), backups gestionados. Se eliminó el EFS y la VPC (menos complejidad y costo).
+- **Seguridad**: el password de Neon se compartió en el chat durante el setup, así
+  que se **rotó** al terminar (Neon -> reset password del rol) y se actualizaron
+  `backend/.env` y el GitHub Secret `DATABASE_URL`. Lección: nunca dejar una
+  credencial que pasó por un canal no confiable; rotarla al cerrar.
+- **Recomendación oil & gas**: si el proyecto es relacional, un Postgres gestionado
+  (Neon/Supabase/RDS) evita toda la fragilidad de SQLite-sobre-EFS y saca la Lambda
+  de la VPC. Planear async desde el inicio (no arrastrar una capa de datos síncrona).
 
 ### (operativo) Docker Desktop se pausa durante los builds
 

@@ -110,9 +110,10 @@ COMPARATIVA_SUPABASE_NEON.md, y este HANDOFF.
 - La `DATABASE_URL` está guardada en `backend/.env` (GITIGNOREADO, no en el repo):
   `postgresql://neondb_owner:<password>@ep-lively-rain-ayp68x7q-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require`
   (usar la connection **pooled**). El password real está en backend/.env.
-- **PENDIENTE DE SEGURIDAD**: el password de Neon se compartió en el chat. Rotarlo
-  en Neon (Settings -> reset password del rol) al terminar la migración, y actualizar
-  backend/.env y el secreto en AWS.
+- **SEGURIDAD (RESUELTO en Fase 5)**: el password de Neon se compartió en el chat
+  durante el setup. Ya se **rotó** (Neon -> reset password del rol) y se actualizaron
+  `backend/.env` (conexión verificada) y el GitHub Secret `DATABASE_URL`. Ver la
+  actualización de Fase 5 al final de este documento.
 
 ## 7. Esquema y capa de datos actuales (para portar)
 
@@ -238,3 +239,146 @@ PENDIENTE (Fase 2 en adelante) — requiere herramientas de edición de código:
 
 NOTA: el esquema YA está aplicado en la base `neondb` de Neon. Si se reaplica, es
 idempotente (no duplica). La base sigue VACÍA de datos de negocio (solo seeds).
+
+---
+
+## ACTUALIZACIÓN — Fase 2 COMPLETADA y validada (repositorios async/pg)
+
+Reescrita toda la capa de datos de SQLite (síncrona, better-sqlite3) a
+PostgreSQL/`pg` (asíncrona). Build (`tsc`) y lint pasan (0 errores); prettier
+limpio. Validado EN VIVO contra Neon (PG 18.6).
+
+Hecho:
+
+- **`db/connection.ts`**: pool de `pg` con `DATABASE_URL` (ssl para Neon).
+  Exporta `query()`, `queryOne()` (fila garantizada o throw), `withTransaction(fn)`
+  (client dedicado con BEGIN/COMMIT/ROLLBACK), `getPool()`, `closeDatabase()` y la
+  interfaz `Executor`. Fija `types.setTypeParser(INT8 -> Number)` para que los
+  BIGINT (montos en centavos, conteos) vuelvan como `number` como antes.
+- **`config/index.ts`**: nuevo `config.databaseUrl` (env `DATABASE_URL`, fail-fast
+  en producción). Quitado `dbPath`.
+- **11 repositorios** convertidos a `async/await` + placeholders `$1..` +
+  `RETURNING id`. Transacciones (ventas, pagos, gastos, compras) con
+  `withTransaction`; el enganche `registrarMovimientoEfectivo(client, ...)` recibe
+  el client de la transacción. Dialecto portado: `datetime('now')`->`now()`;
+  `julianday(a)-julianday('now')`->`(a::date - CURRENT_DATE)`; edad con
+  `date_part('year', age(fecha::date))`; `strftime('%m'/'%Y')`->`to_char(.., 'MM'/'YYYY')`;
+  `lastInsertRowid`->`RETURNING`; `changes`->`rowCount`; `INSERT OR IGNORE`->
+  `ON CONFLICT DO NOTHING`. El cifrado AES-GCM y el HMAC de teléfono quedan igual.
+- **`middleware/audit.ts`**: `registrarAudit` ahora es async (`query()`).
+- **Nuevo `middleware/async-handler.ts`**: envuelve handlers async y reenvía
+  rechazos a `next` (Express 4 no captura promesas). Todas las rutas usan
+  `asyncHandler` y hacen `await` de repos/`registrarAudit`. Rutas con SQL inline
+  (reportes/dashboard+conciliación, catalogos, usuarios, ficha de clientes)
+  portadas a `query()` + dialecto Postgres. Duplicados de catálogo/usuarios se
+  detectan por el código de error de pg `23505`.
+- **Arranque**: `db/init.ts` ahora es async y aplica el esquema idempotente
+  `db/postgres/schema.sql` (en vez de las migraciones SQLite). `index.ts` y
+  `handler.ts` hacen `await initDatabase()`. `db/migrate.ts` reescrito para aplicar
+  ese schema. `db/seed.ts` reescrito a async/pg.
+- **`package.json`**: quitados `better-sqlite3` y `@types/better-sqlite3`;
+  `copy-assets` ahora copia `src/db/postgres/*.sql` a `dist/`. (Se dejó
+  `@aws-sdk/client-secrets-manager`: aún lo usa `crypto.ts`; se evalúa en Fase 3.)
+
+Validación en vivo contra Neon (smoke test, luego eliminado): conexión OK,
+INT8->number, `to_char`, edad con `age`, resta de fechas para `dias_restantes`,
+seeds `metodos_pago` 1-5, índice único parcial `idx_caja_una_abierta`. Además a
+nivel de repos: cliente con email/teléfono cifrados (`enc:v1:`) + búsqueda por
+HMAC de teléfono; venta transaccional con pago en efectivo -> estado `pagada`,
+stock descontado, saldo 0 y enganche de caja registrando el ingreso.
+
+PENDIENTE (Fase 3 en adelante):
+
+- Infra (`infra/template.yaml`): sacar la Lambda de la VPC, eliminar EFS,
+  `DATABASE_URL` a Secrets Manager (dynamic reference), quitar `DB_PATH`; el CD
+  puede quitar `--use-container` (pg es JS puro).
+- Probar por flujo git (branch -> PR -> develop -> main -> CD) y verificar prod.
+- Rotar el password de Neon (se filtró en chat) al terminar.
+- Las migraciones SQLite viejas en `src/db/migrations/` quedaron sin uso (no
+  rompen nada); se pueden borrar en la limpieza de Fase 5.
+
+NOTA: la migración NO toca datos (la base arranca limpia salvo seeds). El
+contrato JSON de la API no cambió, así que el frontend no requiere cambios.
+
+---
+
+## ACTUALIZACIÓN — Fase 3 (infra) y prep de Fase 4 (despliegue)
+
+Reescrita la infraestructura para quitar VPC/EFS y apuntar a Neon. `sam validate
+--lint` OK, `sam build` (sin contenedor) OK, `npm run build:backend` OK.
+
+Cambios:
+
+- **`infra/template.yaml`**:
+  - Eliminados: VPC, subredes privadas, Security Groups (Lambda/EFS), EFS
+    (`FileSystem`, `MountTarget1/2`, `AccessPoint`, BackupPolicy) y los parámetros
+    de CIDR.
+  - Lambda: quitados `VpcConfig`, `FileSystemConfigs`, la policy de EFS y el
+    `DependsOn` de los mount targets. Ahora corre FUERA de VPC (salida a internet
+    nativa para llegar a Neon por TLS). Quitada la env var `DB_PATH`.
+  - Nuevo parámetro `DatabaseUrl` (`Type: String`, `NoEcho: true`) -> env var
+    `DATABASE_URL` de la Lambda vía `!Ref`. El valor NO vive en el repo.
+  - Se mantiene igual: `EncryptionKeySecret` (Secrets Manager + dynamic reference
+    `ENCRYPTION_KEY`), Cognito, S3+CloudFront (OAC), Budget, LogGroup, HttpApi.
+- **`infra/parameters/{dev,prod}.json`**: agregada `DatabaseUrl` con placeholder
+  `REEMPLAZAR_SOLO_EN_DEPLOY_MANUAL` (el valor real nunca se commitea; en CI lo
+  pasa el CD desde el GitHub Secret).
+- **`.github/workflows/cd.yml`**: `sam build` sin `--use-container` (pg es JS
+  puro). El paso `SAM deploy` recibe `DATABASE_URL` desde `secrets.DATABASE_URL`
+  y lo pasa como `DatabaseUrl=...` en `--parameter-overrides`. Comentarios de
+  better-sqlite3/QEMU actualizados.
+- **Limpieza**: borradas las 13 migraciones SQLite viejas (`backend/src/db/
+migrations/*.sql`, sin uso desde Fase 2). `.env.example` ahora documenta
+  `DATABASE_URL` (antes `DB_PATH`).
+- **Docs**: `RUNBOOK_AWS.md` actualizado (arquitectura sin VPC/EFS, deploy sin
+  Docker, GitHub Secret `DATABASE_URL`, carga de datos contra Neon).
+
+PENDIENTE antes/durante el despliegue (Fase 4) — HACER EN ESTE ORDEN:
+
+1. **Crear el GitHub Secret `DATABASE_URL`** en el repo (Settings -> Secrets and
+   variables -> Actions), con la connection string POOLED de Neon
+   (`sslmode=require`). Sin este secret, el CD desplegará la Lambda con
+   `DATABASE_URL` vacía y el health check fallará.
+2. Merge por el flujo git (feature -> PR -> develop -> release a main). El push a
+   main dispara el CD. OJO: este deploy MODIFICA el stack existente: CloudFormation
+   **sacará la Lambda de la VPC y ELIMINARÁ el EFS, subredes, SGs y mount targets**.
+   Es un cambio grande; puede tardar. El EFS ya está vacío (datos de prueba), así
+   que no se pierde nada de valor, pero es irreversible sin recrear.
+3. Vigilar el CD (health check con reintentos). Verificar en prod: `/api/health`
+   200, login, dashboard, crear cliente/venta, cifrado.
+
+Fase 5 (cierre) pendiente: rotar el password de Neon (se filtró en el chat) y
+actualizar el GitHub Secret + `backend/.env`; marcar `PLAN_MIGRACION_BD.md` como
+hecho; agregar la lección correspondiente a `LECCIONES_DEPLOY.md`.
+
+---
+
+## ACTUALIZACIÓN — Fase 5 (limpieza y cierre)
+
+Cerrada la parte de código/config/seguridad de la migración.
+
+Hecho:
+
+- **Rotación del password de Neon**: se reseteó el password del rol en Neon
+  (porque se había compartido en el chat durante el setup). Se actualizó
+  `backend/.env` con la nueva `DATABASE_URL` (pooled, `sslmode=require`) y se
+  verificó la conexión: PG 18.6, 26 tablas, seeds intactos (`metodos_pago`=5).
+- **GitHub Secret `DATABASE_URL`**: creado en `naxus1/erp-rockality` (Actions),
+  tomando el valor desde `backend/.env` sin exponerlo. Es lo que el CD pasa como
+  parámetro `DatabaseUrl` del stack. Si se vuelve a rotar el password, actualizar
+  este secret y `backend/.env`, y redeployar.
+- **Documentación**: `PLAN_MIGRACION_BD.md` marcado como HECHO; lección **#15**
+  agregada a `LECCIONES_DEPLOY.md` (con las trampas concretas: BIGINT->string en
+  pg, Express 4 + async, ssl de Neon, error `23505`, DATABASE_URL fuera del repo);
+  `RUNBOOK_AWS.md` ya reflejaba la arquitectura sin VPC/EFS.
+
+Estado final de la migración (código + infra + docs): **completa**. Lo único que
+queda es operativo y depende de AWS:
+
+- **Desplegar** por el flujo git (feature -> PR -> develop -> release a main). El
+  push a main dispara el CD, que ahora tiene el secret `DATABASE_URL`. Recordar:
+  ese deploy saca la Lambda de la VPC y **elimina EFS/subredes/SGs/mount targets**
+  del stack (irreversible, pero el EFS estaba vacío). Verificar en prod:
+  `/api/health` 200, login, dashboard, crear cliente/venta, cifrado.
+- Si en producción se quiere el `usuarios_sistema` sembrado, ya viene en el
+  `schema.sql` (admin/gerente/vendedor). Cognito no cambia con esta migración.

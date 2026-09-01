@@ -2,12 +2,12 @@
   "name": "@erp-rockality/backend",
   "version": "0.1.0",
   "private": true,
-  "description": "Backend API del ERP Rockality — Node.js + Express + SQLite",
+  "description": "Backend API del ERP Rockality — Node.js + Express + PostgreSQL (Neon)",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc && npm run copy-assets",
-    "copy-assets": "mkdir -p dist/db/migrations && cp src/db/migrations/*.sql dist/db/migrations/",
+    "copy-assets": "mkdir -p dist/db/postgres && cp src/db/postgres/*.sql dist/db/postgres/",
     "start": "node dist/index.js",
     "lint": "eslint src/",
     "test": "vitest run",
@@ -17,7 +17,6 @@
     "@aws-sdk/client-secrets-manager": "^3.1119.0",
     "@vendia/serverless-express": "^4.12.0",
     "aws-jwt-verify": "^4.0.1",
-    "better-sqlite3": "^11.7.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
@@ -27,7 +26,6 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.0",
     "@types/cors": "^2.8.0",
     "@types/express": "^5.0.0",
     "@types/morgan": "^1.9.0",

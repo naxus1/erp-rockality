@@ -1,1 +1,6 @@
-["Stage=dev", "BudgetEmail=CAMBIAR@tudominio.com", "AllowedOrigins=https://CAMBIAR.cloudfront.net"]
+[
+  "Stage=dev",
+  "BudgetEmail=CAMBIAR@tudominio.com",
+  "AllowedOrigins=https://CAMBIAR.cloudfront.net",
+  "DatabaseUrl=REEMPLAZAR_SOLO_EN_DEPLOY_MANUAL"
+]

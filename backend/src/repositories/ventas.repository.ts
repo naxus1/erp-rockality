@@ -7,7 +7,7 @@
  *  - Se crea suscripción si incluye plan
  *  - Se puede registrar pago inmediato o quedar pendiente
  */
-import { getDatabase } from '../db/connection.js';
+import { query, withTransaction } from '../db/connection.js';
 import { registrarMovimientoEfectivo } from './caja.repository.js';
 
 export interface Venta {
@@ -86,83 +86,79 @@ const SELECT_VENTA = `
   LEFT JOIN clientes c ON v.cliente_cedula = c.cedula
 `;
 
-export function findAll(filters?: {
+export async function findAll(filters?: {
   desde?: string;
   hasta?: string;
   estado?: string;
   tipo?: string;
-}): VentaConCliente[] {
-  const db = getDatabase();
+}): Promise<VentaConCliente[]> {
   const conditions: string[] = [];
   const params: (string | number)[] = [];
 
   if (filters?.desde) {
-    conditions.push('v.fecha >= ?');
     params.push(filters.desde);
+    conditions.push(`v.fecha >= $${params.length}`);
   }
   if (filters?.hasta) {
-    conditions.push('v.fecha <= ?');
     params.push(filters.hasta + ' 23:59:59');
+    conditions.push(`v.fecha <= $${params.length}`);
   }
   if (filters?.estado) {
-    conditions.push('v.estado = ?');
     params.push(filters.estado);
+    conditions.push(`v.estado = $${params.length}`);
   }
   if (filters?.tipo) {
-    conditions.push('v.tipo = ?');
     params.push(filters.tipo);
+    conditions.push(`v.tipo = $${params.length}`);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  return db
-    .prepare(`${SELECT_VENTA} ${where} ORDER BY v.fecha DESC LIMIT 100`)
-    .all(...params) as VentaConCliente[];
+  const res = await query<VentaConCliente>(
+    `${SELECT_VENTA} ${where} ORDER BY v.fecha DESC LIMIT 100`,
+    params,
+  );
+  return res.rows;
 }
 
-export function findById(id: number): VentaDetallada | undefined {
-  const db = getDatabase();
-
-  const venta = db.prepare(`${SELECT_VENTA} WHERE v.id = ?`).get(id) as VentaConCliente | undefined;
+export async function findById(id: number): Promise<VentaDetallada | undefined> {
+  const ventaRes = await query<VentaConCliente>(`${SELECT_VENTA} WHERE v.id = $1`, [id]);
+  const venta = ventaRes.rows[0];
   if (!venta) return undefined;
 
-  const items = db
-    .prepare(
-      `SELECT dv.*,
+  const itemsRes = await query<VentaDetallada['items'][number]>(
+    `SELECT dv.*,
         p.nombre as producto_nombre,
         pl.nombre as plan_nombre
       FROM detalle_venta dv
       LEFT JOIN productos p ON dv.producto_sku = p.sku
       LEFT JOIN planes pl ON dv.plan_id = pl.id
-      WHERE dv.venta_id = ?`,
-    )
-    .all(id) as VentaDetallada['items'];
+      WHERE dv.venta_id = $1`,
+    [id],
+  );
 
-  const pagos = db
-    .prepare(
-      `SELECT pa.id, pa.monto, pa.fecha, mp.nombre as metodo_pago_nombre, pa.referencia
+  const pagosRes = await query<VentaDetallada['pagos'][number]>(
+    `SELECT pa.id, pa.monto, pa.fecha, mp.nombre as metodo_pago_nombre, pa.referencia
       FROM pagos pa
       JOIN metodos_pago mp ON pa.metodo_pago_id = mp.id
-      WHERE pa.venta_id = ?
+      WHERE pa.venta_id = $1
       ORDER BY pa.fecha`,
-    )
-    .all(id) as VentaDetallada['pagos'];
+    [id],
+  );
 
+  const pagos = pagosRes.rows;
   const totalPagado = pagos.reduce((sum, p) => sum + p.monto, 0);
 
   return {
     ...venta,
-    items,
+    items: itemsRes.rows,
     pagos,
     total_pagado: totalPagado,
     saldo_pendiente: venta.total - totalPagado,
   };
 }
 
-export function create(data: CreateVentaData): VentaDetallada {
-  const db = getDatabase();
-
-  const crearVenta = db.transaction(() => {
+export async function create(data: CreateVentaData): Promise<VentaDetallada> {
+  const ventaId = await withTransaction(async (client) => {
     // Calcular totales
     let subtotal = 0;
     let iva = 0;
@@ -173,16 +169,20 @@ export function create(data: CreateVentaData): VentaDetallada {
       subtotal += itemSubtotal;
 
       if (item.tipo_item === 'producto' && item.producto_sku) {
-        const producto = db
-          .prepare('SELECT aplica_iva, porcentaje_iva FROM productos WHERE sku = ?')
-          .get(item.producto_sku) as { aplica_iva: number; porcentaje_iva: number } | undefined;
+        const prodRes = await client.query<{ aplica_iva: number; porcentaje_iva: number }>(
+          'SELECT aplica_iva, porcentaje_iva FROM productos WHERE sku = $1',
+          [item.producto_sku],
+        );
+        const producto = prodRes.rows[0];
         if (producto?.aplica_iva) {
           iva += Math.round(itemSubtotal * (producto.porcentaje_iva / 100));
         }
       } else if (item.tipo_item === 'plan' && item.plan_id) {
-        const plan = db
-          .prepare('SELECT aplica_iva, porcentaje_iva FROM planes WHERE id = ?')
-          .get(item.plan_id) as { aplica_iva: number; porcentaje_iva: number } | undefined;
+        const planRes = await client.query<{ aplica_iva: number; porcentaje_iva: number }>(
+          'SELECT aplica_iva, porcentaje_iva FROM planes WHERE id = $1',
+          [item.plan_id],
+        );
+        const plan = planRes.rows[0];
         if (plan?.aplica_iva) {
           iva += Math.round(itemSubtotal * (plan.porcentaje_iva / 100));
         }
@@ -198,12 +198,10 @@ export function create(data: CreateVentaData): VentaDetallada {
     }
 
     // Insertar venta
-    const ventaResult = db
-      .prepare(
-        `INSERT INTO ventas (cliente_cedula, usuario_id, subtotal, iva, total, tipo, estado, notas, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
+    const ventaResult = await client.query<{ id: number }>(
+      `INSERT INTO ventas (cliente_cedula, usuario_id, subtotal, iva, total, tipo, estado, notas, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [
         data.cliente_cedula || null,
         data.created_by || 'sistema',
         subtotal,
@@ -213,37 +211,42 @@ export function create(data: CreateVentaData): VentaDetallada {
         estado,
         data.notas || null,
         data.created_by || null,
-      );
+      ],
+    );
 
-    const ventaId = Number(ventaResult.lastInsertRowid);
+    const venta_id = ventaResult.rows[0]!.id;
 
     // Insertar detalle y descontar stock
     for (const item of data.items) {
-      db.prepare(
+      await client.query(
         `INSERT INTO detalle_venta (venta_id, tipo_item, producto_sku, plan_id, cantidad, precio_unitario, subtotal)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ).run(
-        ventaId,
-        item.tipo_item,
-        item.producto_sku || null,
-        item.plan_id || null,
-        item.cantidad,
-        item.precio_unitario,
-        item.precio_unitario * item.cantidad,
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          venta_id,
+          item.tipo_item,
+          item.producto_sku || null,
+          item.plan_id || null,
+          item.cantidad,
+          item.precio_unitario,
+          item.precio_unitario * item.cantidad,
+        ],
       );
 
       // Descontar stock si es producto
       if (item.tipo_item === 'producto' && item.producto_sku) {
-        db.prepare(
-          "UPDATE productos SET stock_actual = stock_actual - ?, updated_at = datetime('now'), updated_by = ? WHERE sku = ?",
-        ).run(item.cantidad, data.created_by || null, item.producto_sku);
+        await client.query(
+          'UPDATE productos SET stock_actual = stock_actual - $1, updated_at = now(), updated_by = $2 WHERE sku = $3',
+          [item.cantidad, data.created_by || null, item.producto_sku],
+        );
       }
 
       // Crear suscripción si es plan
       if (item.tipo_item === 'plan' && item.plan_id && data.cliente_cedula) {
-        const plan = db
-          .prepare('SELECT duracion_dias FROM planes WHERE id = ?')
-          .get(item.plan_id) as { duracion_dias: number } | undefined;
+        const planRes = await client.query<{ duracion_dias: number }>(
+          'SELECT duracion_dias FROM planes WHERE id = $1',
+          [item.plan_id],
+        );
+        const plan = planRes.rows[0];
 
         if (plan) {
           const fechaInicio = new Date().toISOString().split('T')[0];
@@ -251,17 +254,18 @@ export function create(data: CreateVentaData): VentaDetallada {
             .toISOString()
             .split('T')[0];
 
-          db.prepare(
+          await client.query(
             `INSERT INTO suscripciones (cliente_cedula, plan_id, venta_id, fecha_inicio, fecha_fin, monto_pagado, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          ).run(
-            data.cliente_cedula,
-            item.plan_id,
-            ventaId,
-            fechaInicio,
-            fechaFin,
-            item.precio_unitario * item.cantidad,
-            data.created_by || null,
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              data.cliente_cedula,
+              item.plan_id,
+              venta_id,
+              fechaInicio,
+              fechaFin,
+              item.precio_unitario * item.cantidad,
+              data.created_by || null,
+            ],
           );
         }
       }
@@ -269,69 +273,68 @@ export function create(data: CreateVentaData): VentaDetallada {
 
     // Registrar pago inmediato si se proporcionó
     if (data.pago_inmediato) {
-      db.prepare(
+      await client.query(
         `INSERT INTO pagos (venta_id, monto, metodo_pago_id, referencia, created_by)
-         VALUES (?, ?, ?, ?, ?)`,
-      ).run(
-        ventaId,
-        data.pago_inmediato.monto,
-        data.pago_inmediato.metodo_pago_id,
-        data.pago_inmediato.referencia || null,
-        data.created_by || null,
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          venta_id,
+          data.pago_inmediato.monto,
+          data.pago_inmediato.metodo_pago_id,
+          data.pago_inmediato.referencia || null,
+          data.created_by || null,
+        ],
       );
 
       // Caja: si el pago inmediato fue en efectivo y hay sesión abierta, entra.
-      registrarMovimientoEfectivo(db, {
+      await registrarMovimientoEfectivo(client, {
         metodo_pago_id: data.pago_inmediato.metodo_pago_id,
         tipo: 'ingreso',
         monto: data.pago_inmediato.monto,
         origen: 'venta',
         referencia_tipo: 'venta',
-        referencia_id: ventaId,
-        motivo: `Venta en efectivo #${ventaId}`,
+        referencia_id: venta_id,
+        motivo: `Venta en efectivo #${venta_id}`,
         created_by: data.created_by,
       });
     }
 
-    return ventaId;
+    return venta_id;
   });
 
-  const ventaId = crearVenta();
-  return findById(ventaId)!;
+  return (await findById(ventaId))!;
 }
 
-export function anular(id: number, updatedBy?: string, motivo?: string): boolean {
-  const db = getDatabase();
-
-  const anularVenta = db.transaction(() => {
-    const venta = db.prepare('SELECT estado FROM ventas WHERE id = ?').get(id) as
-      | { estado: string }
-      | undefined;
+export async function anular(id: number, updatedBy?: string, motivo?: string): Promise<boolean> {
+  return withTransaction(async (client) => {
+    const ventaRes = await client.query<{ estado: string }>(
+      'SELECT estado FROM ventas WHERE id = $1',
+      [id],
+    );
+    const venta = ventaRes.rows[0];
     if (!venta || venta.estado === 'anulada') return false;
 
     // Restaurar stock de productos
-    const items = db
-      .prepare(
-        "SELECT producto_sku, cantidad FROM detalle_venta WHERE venta_id = ? AND tipo_item = 'producto'",
-      )
-      .all(id) as Array<{ producto_sku: string; cantidad: number }>;
+    const itemsRes = await client.query<{ producto_sku: string; cantidad: number }>(
+      "SELECT producto_sku, cantidad FROM detalle_venta WHERE venta_id = $1 AND tipo_item = 'producto'",
+      [id],
+    );
 
-    for (const item of items) {
-      db.prepare(
-        "UPDATE productos SET stock_actual = stock_actual + ?, updated_at = datetime('now'), updated_by = ? WHERE sku = ?",
-      ).run(item.cantidad, updatedBy || null, item.producto_sku);
+    for (const item of itemsRes.rows) {
+      await client.query(
+        'UPDATE productos SET stock_actual = stock_actual + $1, updated_at = now(), updated_by = $2 WHERE sku = $3',
+        [item.cantidad, updatedBy || null, item.producto_sku],
+      );
     }
 
     // Cancelar suscripciones vinculadas
-    db.prepare("UPDATE suscripciones SET estado = 'cancelada' WHERE venta_id = ?").run(id);
+    await client.query("UPDATE suscripciones SET estado = 'cancelada' WHERE venta_id = $1", [id]);
 
     // Marcar venta como anulada, dejando registro de quién, cuándo y por qué
-    db.prepare(
-      "UPDATE ventas SET estado = 'anulada', updated_at = datetime('now'), updated_by = ?, motivo_anulacion = ? WHERE id = ?",
-    ).run(updatedBy || null, motivo || null, id);
+    await client.query(
+      "UPDATE ventas SET estado = 'anulada', updated_at = now(), updated_by = $1, motivo_anulacion = $2 WHERE id = $3",
+      [updatedBy || null, motivo || null, id],
+    );
 
     return true;
   });
-
-  return anularVenta();
 }

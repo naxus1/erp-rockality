@@ -4,7 +4,7 @@
  * Unifica: proveedores, empleados, empresas de servicios.
  * PK = NIT o cédula.
  */
-import { getDatabase } from '../db/connection.js';
+import { query } from '../db/connection.js';
 import { toUpper } from '../schemas/text.js';
 
 export interface Tercero {
@@ -53,11 +53,10 @@ const SELECT_TERCERO = `
   JOIN tipos_tercero tt ON t.tipo_tercero_id = tt.id
 `;
 
-export function findAll(filters?: {
+export async function findAll(filters?: {
   tipo_tercero_id?: number;
   includeInactive?: boolean;
-}): TerceroConTipo[] {
-  const db = getDatabase();
+}): Promise<TerceroConTipo[]> {
   const conditions: string[] = [];
   const params: (string | number)[] = [];
 
@@ -65,83 +64,82 @@ export function findAll(filters?: {
     conditions.push('t.activo = 1');
   }
   if (filters?.tipo_tercero_id) {
-    conditions.push('t.tipo_tercero_id = ?');
     params.push(filters.tipo_tercero_id);
+    conditions.push(`t.tipo_tercero_id = $${params.length}`);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  return db
-    .prepare(`${SELECT_TERCERO} ${where} ORDER BY t.nombre`)
-    .all(...params) as TerceroConTipo[];
+  const res = await query<TerceroConTipo>(`${SELECT_TERCERO} ${where} ORDER BY t.nombre`, params);
+  return res.rows;
 }
 
-export function findByNit(nit: string): TerceroConTipo | undefined {
-  const db = getDatabase();
-  return db.prepare(`${SELECT_TERCERO} WHERE t.nit = ?`).get(nit) as TerceroConTipo | undefined;
+export async function findByNit(nit: string): Promise<TerceroConTipo | undefined> {
+  const res = await query<TerceroConTipo>(`${SELECT_TERCERO} WHERE t.nit = $1`, [nit]);
+  return res.rows[0];
 }
 
-export function search(query: string): TerceroConTipo[] {
-  const db = getDatabase();
+export async function search(queryStr: string): Promise<TerceroConTipo[]> {
   // Datos en MAYÚSCULAS: comparamos UPPER(columna) contra el término normalizado
   // para búsqueda insensible a mayúsculas/acentos.
-  const param = `%${toUpper(query)}%`;
-  return db
-    .prepare(
-      `${SELECT_TERCERO}
-       WHERE t.activo = 1 AND (UPPER(t.nombre) LIKE ? OR UPPER(t.nit) LIKE ? OR UPPER(t.nombre_contacto) LIKE ?)
-       ORDER BY t.nombre LIMIT 20`,
-    )
-    .all(param, param, param) as TerceroConTipo[];
-}
-
-export function create(data: CreateTerceroData): TerceroConTipo {
-  const db = getDatabase();
-  db.prepare(
-    `INSERT INTO terceros (nit, nombre, tipo_tercero_id, direccion, telefono, nombre_contacto, observaciones, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    data.nit,
-    data.nombre,
-    data.tipo_tercero_id,
-    data.direccion || null,
-    data.telefono || null,
-    data.nombre_contacto || null,
-    data.observaciones || null,
-    data.created_by || null,
+  const param = `%${toUpper(queryStr)}%`;
+  const res = await query<TerceroConTipo>(
+    `${SELECT_TERCERO}
+     WHERE t.activo = 1 AND (UPPER(t.nombre) LIKE $1 OR UPPER(t.nit) LIKE $1 OR UPPER(t.nombre_contacto) LIKE $1)
+     ORDER BY t.nombre LIMIT 20`,
+    [param],
   );
-  return findByNit(data.nit)!;
+  return res.rows;
 }
 
-export function update(nit: string, data: UpdateTerceroData): TerceroConTipo | undefined {
-  const db = getDatabase();
-  const current = findByNit(nit);
+export async function create(data: CreateTerceroData): Promise<TerceroConTipo> {
+  await query(
+    `INSERT INTO terceros (nit, nombre, tipo_tercero_id, direccion, telefono, nombre_contacto, observaciones, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [
+      data.nit,
+      data.nombre,
+      data.tipo_tercero_id,
+      data.direccion || null,
+      data.telefono || null,
+      data.nombre_contacto || null,
+      data.observaciones || null,
+      data.created_by || null,
+    ],
+  );
+  return (await findByNit(data.nit))!;
+}
+
+export async function update(
+  nit: string,
+  data: UpdateTerceroData,
+): Promise<TerceroConTipo | undefined> {
+  const current = await findByNit(nit);
   if (!current) return undefined;
 
-  db.prepare(
+  await query(
     `UPDATE terceros SET
-       nombre = ?, tipo_tercero_id = ?, direccion = ?, telefono = ?,
-       nombre_contacto = ?, observaciones = ?,
-       updated_at = datetime('now'), updated_by = ?
-     WHERE nit = ?`,
-  ).run(
-    data.nombre ?? current.nombre,
-    data.tipo_tercero_id ?? current.tipo_tercero_id,
-    data.direccion ?? current.direccion,
-    data.telefono ?? current.telefono,
-    data.nombre_contacto ?? current.nombre_contacto,
-    data.observaciones ?? current.observaciones,
-    data.updated_by || null,
-    nit,
+       nombre = $1, tipo_tercero_id = $2, direccion = $3, telefono = $4,
+       nombre_contacto = $5, observaciones = $6,
+       updated_at = now(), updated_by = $7
+     WHERE nit = $8`,
+    [
+      data.nombre ?? current.nombre,
+      data.tipo_tercero_id ?? current.tipo_tercero_id,
+      data.direccion ?? current.direccion,
+      data.telefono ?? current.telefono,
+      data.nombre_contacto ?? current.nombre_contacto,
+      data.observaciones ?? current.observaciones,
+      data.updated_by || null,
+      nit,
+    ],
   );
   return findByNit(nit);
 }
 
-export function deactivate(nit: string, updatedBy?: string): boolean {
-  const db = getDatabase();
-  const result = db
-    .prepare(
-      "UPDATE terceros SET activo = 0, updated_at = datetime('now'), updated_by = ? WHERE nit = ?",
-    )
-    .run(updatedBy || null, nit);
-  return result.changes > 0;
+export async function deactivate(nit: string, updatedBy?: string): Promise<boolean> {
+  const res = await query(
+    'UPDATE terceros SET activo = 0, updated_at = now(), updated_by = $1 WHERE nit = $2',
+    [updatedBy || null, nit],
+  );
+  return (res.rowCount ?? 0) > 0;
 }

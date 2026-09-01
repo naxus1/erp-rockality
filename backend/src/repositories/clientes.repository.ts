@@ -4,7 +4,7 @@
  * CRUD completo. PK = cédula.
  * La edad se calcula desde fecha_nacimiento (no se almacena).
  */
-import { getDatabase } from '../db/connection.js';
+import { query } from '../db/connection.js';
 import { encryptNullable, decrypt, hmac } from '../utils/crypto.js';
 import { toUpper } from '../schemas/text.js';
 
@@ -89,12 +89,13 @@ export interface UpdateClienteData {
   updated_by?: string;
 }
 
-// Query base con edad calculada y nombres de catálogos
+// Query base con edad calculada y nombres de catálogos.
+// Edad: años completos entre fecha_nacimiento (TEXT YYYY-MM-DD) y hoy.
 const SELECT_CLIENTE = `
   SELECT c.*,
     CASE
       WHEN c.fecha_nacimiento IS NOT NULL
-      THEN CAST((julianday('now') - julianday(c.fecha_nacimiento)) / 365.25 AS INTEGER)
+      THEN date_part('year', age(c.fecha_nacimiento::date))::int
       ELSE NULL
     END as edad,
     ci.nombre as ciudad_nombre,
@@ -114,85 +115,80 @@ function descifrarFila<T extends ClienteConRelaciones | undefined>(row: T): T {
   return row;
 }
 
-export function findAll(includeInactive = false): ClienteConRelaciones[] {
-  const db = getDatabase();
+export async function findAll(includeInactive = false): Promise<ClienteConRelaciones[]> {
   const where = includeInactive ? '' : 'WHERE c.activo = 1';
-  const rows = db
-    .prepare(`${SELECT_CLIENTE} ${where} ORDER BY c.nombre, c.apellidos`)
-    .all() as ClienteConRelaciones[];
-  return rows.map((r) => descifrarFila(r));
+  const res = await query<ClienteConRelaciones>(
+    `${SELECT_CLIENTE} ${where} ORDER BY c.nombre, c.apellidos`,
+  );
+  return res.rows.map((r) => descifrarFila(r));
 }
 
-export function findByCedula(cedula: string): ClienteConRelaciones | undefined {
-  const db = getDatabase();
-  const row = db.prepare(`${SELECT_CLIENTE} WHERE c.cedula = ?`).get(cedula) as
-    | ClienteConRelaciones
-    | undefined;
-  return descifrarFila(row);
+export async function findByCedula(cedula: string): Promise<ClienteConRelaciones | undefined> {
+  const res = await query<ClienteConRelaciones>(`${SELECT_CLIENTE} WHERE c.cedula = $1`, [cedula]);
+  return descifrarFila(res.rows[0]);
 }
 
-export function search(query: string): ClienteConRelaciones[] {
-  const db = getDatabase();
+export async function search(queryStr: string): Promise<ClienteConRelaciones[]> {
   // Los datos se guardan en MAYÚSCULAS. Normalizamos el término igual y comparamos
   // UPPER(columna) contra el término, para que la búsqueda sea insensible a
-  // mayúsculas/minúsculas incluso con acentos y la Ñ (LIKE de SQLite solo es
-  // case-insensitive para ASCII).
-  const param = `%${toUpper(query)}%`;
+  // mayúsculas/minúsculas incluso con acentos y la Ñ.
+  const param = `%${toUpper(queryStr)}%`;
   // El teléfono está cifrado: no se puede LIKE. Buscamos por nombre/apellidos/cédula
   // con LIKE, y además por teléfono exacto vía HMAC (si el término es un número).
-  const telHash = hmac(query);
-  const rows = db
-    .prepare(
-      `${SELECT_CLIENTE}
-       WHERE c.activo = 1 AND (
-         UPPER(c.nombre) LIKE ? OR UPPER(c.apellidos) LIKE ? OR UPPER(c.cedula) LIKE ? OR c.telefono_hash = ?
-       )
-       ORDER BY c.nombre, c.apellidos
-       LIMIT 20`,
-    )
-    .all(param, param, param, telHash) as ClienteConRelaciones[];
-  return rows.map((r) => descifrarFila(r));
+  const telHash = hmac(queryStr);
+  const res = await query<ClienteConRelaciones>(
+    `${SELECT_CLIENTE}
+     WHERE c.activo = 1 AND (
+       UPPER(c.nombre) LIKE $1 OR UPPER(c.apellidos) LIKE $1 OR UPPER(c.cedula) LIKE $1 OR c.telefono_hash = $2
+     )
+     ORDER BY c.nombre, c.apellidos
+     LIMIT 20`,
+    [param, telHash],
+  );
+  return res.rows.map((r) => descifrarFila(r));
 }
 
-export function create(data: CreateClienteData): ClienteConRelaciones {
-  const db = getDatabase();
+export async function create(data: CreateClienteData): Promise<ClienteConRelaciones> {
   const consentimiento = data.consentimiento_datos ?? 0;
   const consentimientoFecha = consentimiento ? new Date().toISOString() : null;
 
-  db.prepare(
+  await query(
     `INSERT INTO clientes (cedula, nombre, apellidos, telefono, telefono_hash, email, fecha_nacimiento, direccion, ciudad_id, sexo_id, canal_captacion_id, consentimiento_datos, consentimiento_fecha, notas, notas_salud, instagram, linkedin, whatsapp, hace_ejercicio, referido_por, referido_por_nombre, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    data.cedula,
-    data.nombre,
-    data.apellidos,
-    encryptNullable(data.telefono),
-    hmac(data.telefono),
-    encryptNullable(data.email),
-    data.fecha_nacimiento || null,
-    data.direccion || null,
-    data.ciudad_id || null,
-    data.sexo_id || null,
-    data.canal_captacion_id || null,
-    consentimiento,
-    consentimientoFecha,
-    data.notas || null,
-    data.notas_salud || null,
-    data.instagram || null,
-    data.linkedin || null,
-    data.whatsapp || null,
-    data.hace_ejercicio ?? 0,
-    data.referido_por || null,
-    data.referido_por_nombre || null,
-    data.created_by || null,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
+    [
+      data.cedula,
+      data.nombre,
+      data.apellidos,
+      encryptNullable(data.telefono),
+      hmac(data.telefono),
+      encryptNullable(data.email),
+      data.fecha_nacimiento || null,
+      data.direccion || null,
+      data.ciudad_id || null,
+      data.sexo_id || null,
+      data.canal_captacion_id || null,
+      consentimiento,
+      consentimientoFecha,
+      data.notas || null,
+      data.notas_salud || null,
+      data.instagram || null,
+      data.linkedin || null,
+      data.whatsapp || null,
+      data.hace_ejercicio ?? 0,
+      data.referido_por || null,
+      data.referido_por_nombre || null,
+      data.created_by || null,
+    ],
   );
 
-  return findByCedula(data.cedula)!;
+  return (await findByCedula(data.cedula))!;
 }
 
-export function update(cedula: string, data: UpdateClienteData): ClienteConRelaciones | undefined {
-  const db = getDatabase();
-  const current = findByCedula(cedula);
+export async function update(
+  cedula: string,
+  data: UpdateClienteData,
+): Promise<ClienteConRelaciones | undefined> {
+  const current = await findByCedula(cedula);
   if (!current) return undefined;
 
   let consentimientoFecha = current.consentimiento_fecha;
@@ -217,66 +213,63 @@ export function update(cedula: string, data: UpdateClienteData): ClienteConRelac
       ? current.referido_por_nombre
       : data.referido_por_nombre || null;
 
-  db.prepare(
+  await query(
     `UPDATE clientes SET
-       nombre = ?, apellidos = ?, telefono = ?, telefono_hash = ?, email = ?,
-       fecha_nacimiento = ?, direccion = ?, ciudad_id = ?, sexo_id = ?,
-       canal_captacion_id = ?, consentimiento_datos = ?, consentimiento_fecha = ?,
-       notas = ?, notas_salud = ?, instagram = ?, linkedin = ?, whatsapp = ?,
-       hace_ejercicio = ?, referido_por = ?, referido_por_nombre = ?,
-       updated_at = datetime('now'), updated_by = ?
-     WHERE cedula = ?`,
-  ).run(
-    data.nombre ?? current.nombre,
-    data.apellidos ?? current.apellidos,
-    encryptNullable(telefonoFinal),
-    hmac(telefonoFinal),
-    encryptNullable(emailFinal),
-    data.fecha_nacimiento ?? current.fecha_nacimiento,
-    data.direccion ?? current.direccion,
-    data.ciudad_id ?? current.ciudad_id,
-    data.sexo_id ?? current.sexo_id,
-    data.canal_captacion_id ?? current.canal_captacion_id,
-    data.consentimiento_datos ?? current.consentimiento_datos,
-    consentimientoFecha,
-    data.notas ?? current.notas,
-    data.notas_salud ?? current.notas_salud,
-    data.instagram ?? current.instagram,
-    data.linkedin ?? current.linkedin,
-    data.whatsapp ?? current.whatsapp,
-    data.hace_ejercicio ?? current.hace_ejercicio,
-    referidoPorFinal,
-    referidoPorNombreFinal,
-    data.updated_by || null,
-    cedula,
+       nombre = $1, apellidos = $2, telefono = $3, telefono_hash = $4, email = $5,
+       fecha_nacimiento = $6, direccion = $7, ciudad_id = $8, sexo_id = $9,
+       canal_captacion_id = $10, consentimiento_datos = $11, consentimiento_fecha = $12,
+       notas = $13, notas_salud = $14, instagram = $15, linkedin = $16, whatsapp = $17,
+       hace_ejercicio = $18, referido_por = $19, referido_por_nombre = $20,
+       updated_at = now(), updated_by = $21
+     WHERE cedula = $22`,
+    [
+      data.nombre ?? current.nombre,
+      data.apellidos ?? current.apellidos,
+      encryptNullable(telefonoFinal),
+      hmac(telefonoFinal),
+      encryptNullable(emailFinal),
+      data.fecha_nacimiento ?? current.fecha_nacimiento,
+      data.direccion ?? current.direccion,
+      data.ciudad_id ?? current.ciudad_id,
+      data.sexo_id ?? current.sexo_id,
+      data.canal_captacion_id ?? current.canal_captacion_id,
+      data.consentimiento_datos ?? current.consentimiento_datos,
+      consentimientoFecha,
+      data.notas ?? current.notas,
+      data.notas_salud ?? current.notas_salud,
+      data.instagram ?? current.instagram,
+      data.linkedin ?? current.linkedin,
+      data.whatsapp ?? current.whatsapp,
+      data.hace_ejercicio ?? current.hace_ejercicio,
+      referidoPorFinal,
+      referidoPorNombreFinal,
+      data.updated_by || null,
+      cedula,
+    ],
   );
 
   return findByCedula(cedula);
 }
 
-export function deactivate(cedula: string, updatedBy?: string): boolean {
-  const db = getDatabase();
-  const result = db
-    .prepare(
-      "UPDATE clientes SET activo = 0, updated_at = datetime('now'), updated_by = ? WHERE cedula = ?",
-    )
-    .run(updatedBy || null, cedula);
-  return result.changes > 0;
+export async function deactivate(cedula: string, updatedBy?: string): Promise<boolean> {
+  const res = await query(
+    'UPDATE clientes SET activo = 0, updated_at = now(), updated_by = $1 WHERE cedula = $2',
+    [updatedBy || null, cedula],
+  );
+  return (res.rowCount ?? 0) > 0;
 }
 
-export function anonimizar(cedula: string, updatedBy?: string): boolean {
-  const db = getDatabase();
-  const result = db
-    .prepare(
-      `UPDATE clientes SET
-         nombre = 'Anonimizado', apellidos = 'Anonimizado',
-         telefono = NULL, telefono_hash = NULL, email = NULL, fecha_nacimiento = NULL,
-         direccion = NULL, ciudad_id = NULL, sexo_id = NULL,
-         notas = 'Datos eliminados por solicitud del titular',
-         notas_salud = NULL, referido_por_nombre = NULL,
-         activo = 0, updated_at = datetime('now'), updated_by = ?
-       WHERE cedula = ?`,
-    )
-    .run(updatedBy || null, cedula);
-  return result.changes > 0;
+export async function anonimizar(cedula: string, updatedBy?: string): Promise<boolean> {
+  const res = await query(
+    `UPDATE clientes SET
+       nombre = 'Anonimizado', apellidos = 'Anonimizado',
+       telefono = NULL, telefono_hash = NULL, email = NULL, fecha_nacimiento = NULL,
+       direccion = NULL, ciudad_id = NULL, sexo_id = NULL,
+       notas = 'Datos eliminados por solicitud del titular',
+       notas_salud = NULL, referido_por_nombre = NULL,
+       activo = 0, updated_at = now(), updated_by = $1
+     WHERE cedula = $2`,
+    [updatedBy || null, cedula],
+  );
+  return (res.rowCount ?? 0) > 0;
 }
