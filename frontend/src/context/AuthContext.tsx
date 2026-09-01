@@ -1,8 +1,13 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { CognitoUserPool, CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js';
 
 export type UserRole = 'admin' | 'gerente' | 'vendedor';
+
+// Duración total de la sesión: 3 horas. Debe coincidir con RefreshTokenValidity
+// del App Client de Cognito (infra/template.yaml). El aviso sale 5 min antes.
+const SESION_MS = 3 * 60 * 60 * 1000; // 3 horas
+const AVISO_ANTES_MS = 5 * 60 * 1000; // 5 minutos antes de expirar
 
 interface User {
   id: string;
@@ -87,7 +92,17 @@ const USERS_DEV: Record<string, { password: string; user: User }> = {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     const stored = localStorage.getItem('erp_user');
-    return stored ? JSON.parse(stored) : null;
+    if (!stored) return null;
+    // Si la sesión ya expiró (al recargar tras 3h), no restaurar el usuario.
+    const expStr = localStorage.getItem('erp_session_exp');
+    if (expStr && Number(expStr) <= Date.now()) {
+      localStorage.removeItem('erp_user');
+      localStorage.removeItem('erp_token');
+      localStorage.removeItem('erp_dev_user');
+      localStorage.removeItem('erp_session_exp');
+      return null;
+    }
+    return JSON.parse(stored);
   });
 
   const login = async (username: string, password: string): Promise<boolean> => {
@@ -98,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(u);
       localStorage.setItem('erp_user', JSON.stringify(u));
       localStorage.setItem('erp_token', token);
+      localStorage.setItem('erp_session_exp', String(Date.now() + SESION_MS));
       return true;
     }
 
@@ -108,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('erp_user', JSON.stringify(entry.user));
       // Identifica al usuario para la auditoría del backend en modo dev
       localStorage.setItem('erp_dev_user', entry.user.id);
+      localStorage.setItem('erp_session_exp', String(Date.now() + SESION_MS));
       return true;
     }
     return false;
@@ -118,7 +135,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('erp_user');
     localStorage.removeItem('erp_token');
     localStorage.removeItem('erp_dev_user');
+    localStorage.removeItem('erp_session_exp');
   };
+
+  // Control de expiración de sesión (3h): avisa 5 min antes y, al vencer,
+  // cierra la sesión y lleva al login. Se basa en erp_session_exp (timestamp),
+  // así que sobrevive a recargas de página.
+  const avisoRef = useRef(false);
+  useEffect(() => {
+    if (!user) return;
+
+    const expStr = localStorage.getItem('erp_session_exp');
+    const exp = expStr ? Number(expStr) : 0;
+    if (!exp) return;
+
+    const cerrarSesion = () => {
+      logout();
+      // Redirige al login (fuera del router para forzar estado limpio).
+      window.location.href = '/';
+    };
+
+    const tick = () => {
+      const restante = exp - Date.now();
+
+      if (restante <= 0) {
+        cerrarSesion();
+        return;
+      }
+
+      // Aviso una sola vez cuando faltan <= 5 min.
+      if (restante <= AVISO_ANTES_MS && !avisoRef.current) {
+        avisoRef.current = true;
+        const mins = Math.max(1, Math.ceil(restante / 60000));
+        window.alert(
+          `Tu sesión está por expirar (en ~${mins} min). Guarda lo que estés haciendo; ` +
+            `deberás iniciar sesión de nuevo.`,
+        );
+      }
+    };
+
+    tick(); // chequeo inmediato (por si ya venció al recargar)
+    const intervalo = window.setInterval(tick, 30_000); // revisa cada 30s
+    return () => window.clearInterval(intervalo);
+  }, [user]);
 
   return (
     <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
