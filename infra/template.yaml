@@ -93,31 +93,10 @@ Resources:
       Tags:
         - { Key: Name, Value: !Sub 'rockality-${Stage}-sg-efs' }
 
-  # SG del VPC Endpoint: acepta HTTPS (443) desde la Lambda
-  VpcEndpointSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: SG de los VPC endpoints (Secrets Manager)
-      VpcId: !Ref Vpc
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          SourceSecurityGroupId: !Ref LambdaSecurityGroup
-      Tags:
-        - { Key: Name, Value: !Sub 'rockality-${Stage}-sg-vpce' }
-
-  # VPC Endpoint (interface) para Secrets Manager: la Lambda (sin internet)
-  # puede leer el secreto de cifrado de forma privada.
-  SecretsManagerEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId: !Ref Vpc
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
-      VpcEndpointType: Interface
-      PrivateDnsEnabled: true
-      SubnetIds: [!Ref PrivateSubnet1, !Ref PrivateSubnet2]
-      SecurityGroupIds: [!Ref VpcEndpointSecurityGroup]
+  # NOTA: se eliminó el VPC Interface Endpoint de Secrets Manager (~$14/mes).
+  # La clave de cifrado ahora se inyecta como env var de la Lambda vía dynamic
+  # reference de CloudFormation al desplegar, así que la Lambda ya NO necesita
+  # llamar a Secrets Manager en runtime ni salir de la VPC.
 
   # ───────────────────────────────────────────────────────────
   # EFS — Almacenamiento de la base SQLite (cifrado en reposo)
@@ -295,16 +274,15 @@ Resources:
           NODE_ENV: production
           DB_PATH: /mnt/data/prod.db
           ALLOWED_ORIGINS: !Ref AllowedOrigins
-          ENCRYPTION_KEY_SECRET_ARN: !Ref EncryptionKeySecret
+          # La clave de cifrado se inyecta como env var resuelta por CloudFormation
+          # desde Secrets Manager AL DESPLEGAR (dynamic reference). Así la Lambda
+          # NO llama a Secrets Manager en runtime -> no necesita el VPC endpoint
+          # (~$14/mes menos). El secreto sigue viviendo en Secrets Manager.
+          ENCRYPTION_KEY: !Sub '{{resolve:secretsmanager:${EncryptionKeySecret}}}'
           COGNITO_USER_POOL_ID: !Ref UserPool
           COGNITO_CLIENT_ID: !Ref UserPoolClient
           COGNITO_REGION: !Ref AWS::Region
       Policies:
-        - Statement:
-            - Sid: LeerSecretoDeCifrado
-              Effect: Allow
-              Action: [secretsmanager:GetSecretValue]
-              Resource: !Ref EncryptionKeySecret
         - Statement:
             - Sid: MontarEFS
               Effect: Allow
