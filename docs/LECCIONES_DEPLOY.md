@@ -25,6 +25,7 @@ authorizer) -> Lambda (Express, arm64, en VPC privada sin internet) -> EFS (SQLi
 - [ ] Desplegar el artefacto empaquetado (`.aws-sam/build/template.yaml`), verificar `CodeSize` en la Lambda.
 - [ ] No hacer `throw` síncrono en la carga de config si el valor se resuelve async (Secrets Manager). Validar presencia de la fuente (env o ARN), no el valor final.
 - [ ] Health check post-deploy con reintentos (el cold start + fetch del secreto tarda).
+- [ ] SQLite sobre EFS: NUNCA usar WAL (usar TRUNCATE); concurrencia reservada = 1; backups de EFS activos. Considerar base gestionada si crece el uso.
 
 ---
 
@@ -170,6 +171,37 @@ authorizer) -> Lambda (Express, arm64, en VPC privada sin internet) -> EFS (SQLi
   (top-level) cuando la config real se resuelve async (Secrets Manager, Parameter Store).
   Validar la **presencia de la fuente** (env o ARN) en el arranque, y validar el **valor
   ya resuelto** dentro del bootstrap async, no en la carga del módulo.
+
+### 14. SQLite sobre EFS se corrompió (disk I/O error -> file is not a database)
+
+- **Síntoma**: "Error interno del servidor" (500) en toda la app. En CloudWatch:
+  primero `[ERROR] disk I/O error`, luego `[ERROR] file is not a database`. La
+  base SQLite en EFS quedó corrupta.
+- **Causa (tres factores combinados)**:
+  1. **WAL sobre EFS/NFS**: `connection.ts` tenía `journal_mode = WAL`. WAL usa
+     memoria compartida (mmap/shm) entre procesos, que **NFS/EFS no soporta**;
+     es una causa documentada de corrupción de SQLite sobre red.
+  2. **Concurrencia sin límite**: la Lambda tenía `ReservedConcurrentExecutions`
+     sin fijar, así que AWS levantaba varias instancias en paralelo, todas
+     escribiendo el mismo `/mnt/data/prod.db`. SQLite no soporta escritura
+     concurrente multi-proceso sobre NFS.
+  3. **Sin backups**: no había punto de restauración.
+- **Solución aplicada**:
+  1. **Quitar WAL**: `journal_mode = TRUNCATE` (rollback journal clásico, seguro
+     en NFS) + `synchronous = FULL` + `busy_timeout = 10000`.
+  2. **Auto-recuperación**: al abrir la DB se hace un `SELECT count(*) FROM
+sqlite_master`; si lanza "not a database/malformed/disk I/O", el archivo
+     corrupto (y sus sidecars -wal/-shm/-journal) se aparta con sufijo
+     `.corrupt-<ts>` y se crea una base nueva (las migraciones recrean el
+     esquema). El servicio se recupera solo.
+  3. **Backups**: `BackupPolicy: ENABLED` en el EFS (AWS Backup diario).
+  4. **Concurrencia 1**: pendiente hasta que suba el límite de la cuenta (hoy
+     capada a 10; AWS exige dejar >=10 sin reservar). Dejar
+     `ReservedConcurrentExecutions: 1` cuando el límite lo permita.
+- **Recomendación oil & gas / futuro**: SQLite sobre EFS en Lambda es frágil con
+  concurrencia real. Para algo más que unos pocos usuarios, usar una base
+  gestionada (DynamoDB, o Aurora Serverless v2 / RDS Postgres). Si se mantiene
+  SQLite: NUNCA WAL sobre EFS, concurrencia reservada = 1, y backups.
 
 ### (operativo) Docker Desktop se pausa durante los builds
 
