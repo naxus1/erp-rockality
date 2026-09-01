@@ -31,9 +31,15 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   });
 
   if (res.status === 401) {
-    // Token ausente/expirado: forzar re-login
+    // Token ausente/expirado o sesión vencida: limpiar y llevar al login.
     localStorage.removeItem('erp_token');
     localStorage.removeItem('erp_user');
+    localStorage.removeItem('erp_dev_user');
+    localStorage.removeItem('erp_session_exp');
+    // Redirige a la raíz (login) evitando quedar en un estado roto (404/pantalla vacía).
+    if (window.location.pathname !== '/') {
+      window.location.href = '/';
+    }
   }
 
   const data = await res.json();

@@ -204,13 +204,16 @@ Resources:
         - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
         - ALLOW_USER_SRP_AUTH
+      # Sesión total de 3 horas: el refresh token vence a las 3h, así que al
+      # expirar el idToken (60 min) se renueva mientras haya refresh válido, y
+      # pasadas las 3h ya no se puede renovar -> se cierra la sesión.
       AccessTokenValidity: 60 # minutos
       IdTokenValidity: 60
-      RefreshTokenValidity: 30 # días
+      RefreshTokenValidity: 180 # minutos (3 horas)
       TokenValidityUnits:
         AccessToken: minutes
         IdToken: minutes
-        RefreshToken: days
+        RefreshToken: minutes
 
   AdminGroup:
     Type: AWS::Cognito::UserPoolGroup
