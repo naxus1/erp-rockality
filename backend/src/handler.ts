@@ -28,11 +28,11 @@ const serverlessExpress = (
 ) as SEFactory;
 
 // Inicialización perezosa en el arranque en frío (cold start): resuelve la clave
-// de cifrado desde Secrets Manager y aplica migraciones sobre la DB en EFS.
+// de cifrado desde Secrets Manager y aplica el esquema Postgres (idempotente) en Neon.
 let ready: Promise<void> | null = null;
 async function bootstrap(): Promise<void> {
   await loadEncryptionKey();
-  initDatabase();
+  await initDatabase();
 }
 
 const serverlessHandler = serverlessExpress({ app });

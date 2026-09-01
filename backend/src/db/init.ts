@@ -1,56 +1,23 @@
 /**
- * INIT — Inicialización de la base de datos
+ * INIT — Inicialización de la base de datos (PostgreSQL / Neon)
  *
- * Ejecuta las migraciones pendientes al arrancar el servidor.
- * En desarrollo, crea la DB automáticamente si no existe.
+ * Aplica el esquema consolidado `postgres/schema.sql` al arrancar. El script es
+ * IDEMPOTENTE (CREATE TABLE IF NOT EXISTS + seeds con ON CONFLICT DO NOTHING),
+ * así que puede ejecutarse en cada arranque sin duplicar ni romper datos.
+ *
+ * Sustituye al antiguo sistema de migraciones incrementales de SQLite: el
+ * esquema ya está portado y consolidado en un solo archivo.
  */
 import path from 'path';
 import fs from 'fs';
 
-import { getDatabase } from './connection.js';
+import { query } from './connection.js';
 
-export function initDatabase(): void {
-  const db = getDatabase();
+export async function initDatabase(): Promise<void> {
+  // El schema.sql se copia a dist/db/postgres/ en el build (ver package.json).
+  const schemaPath = path.join(__dirname, 'postgres', 'schema.sql');
+  const sql = fs.readFileSync(schemaPath, 'utf-8');
 
-  // Crear tabla de control de migraciones
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS _migrations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `);
-
-  // Leer y aplicar migraciones pendientes
-  const migrationsDir = path.join(__dirname, 'migrations');
-  const files = fs
-    .readdirSync(migrationsDir)
-    .filter((f) => f.endsWith('.sql'))
-    .sort();
-
-  const applied = new Set(
-    db
-      .prepare('SELECT name FROM _migrations')
-      .all()
-      .map((row) => (row as { name: string }).name),
-  );
-
-  let count = 0;
-  for (const file of files) {
-    if (applied.has(file)) continue;
-
-    const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
-    const migrate = db.transaction(() => {
-      db.exec(sql);
-      db.prepare('INSERT INTO _migrations (name) VALUES (?)').run(file);
-    });
-
-    migrate();
-    count++;
-    console.warn(`  [DB] ✓ Migración aplicada: ${file}`);
-  }
-
-  if (count === 0) {
-    console.warn('  [DB] Base de datos al día.');
-  }
+  await query(sql);
+  console.warn('  [DB] Esquema PostgreSQL aplicado (idempotente).');
 }

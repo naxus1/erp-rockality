@@ -1,79 +1,23 @@
 /**
- * MIGRATE — Sistema de migraciones para SQLite
+ * MIGRATE — Aplica el esquema PostgreSQL (Neon)
  *
- * ¿Cómo funciona?
- * 1. Lee todos los archivos .sql de la carpeta migrations/
- * 2. Los ordena por número (001, 002, 003...)
- * 3. Revisa cuáles ya se aplicaron (tabla _migrations)
- * 4. Ejecuta solo los que faltan, en orden
+ * Con la migración a Postgres, el esquema quedó consolidado en un único archivo
+ * idempotente (`postgres/schema.sql`) en vez de migraciones incrementales. Este
+ * script simplemente lo aplica contra la DATABASE_URL configurada.
  *
- * Esto permite que la base de datos se actualice incrementalmente
- * sin perder datos existentes.
- *
- * Para correr: npx tsx src/db/migrate.ts
+ * Para correr: npm run migrate  (necesita DATABASE_URL en el entorno / .env)
  */
-import path from 'path';
-import fs from 'fs';
+import { initDatabase } from './init.js';
+import { closeDatabase } from './connection.js';
 
-import { getDatabase, closeDatabase } from './connection.js';
-
-function runMigrations(): void {
-  const db = getDatabase();
-
-  // Crear tabla de control de migraciones (si no existe)
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS _migrations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `);
-
-  // Leer archivos de migración
-  const migrationsDir = path.join(__dirname, 'migrations');
-  const files = fs
-    .readdirSync(migrationsDir)
-    .filter((f) => f.endsWith('.sql'))
-    .sort(); // Ordena: 001_xxx.sql, 002_xxx.sql, etc.
-
-  // Obtener migraciones ya aplicadas
-  const applied = new Set(
-    db
-      .prepare('SELECT name FROM _migrations')
-      .all()
-      .map((row) => (row as { name: string }).name),
-  );
-
-  // Ejecutar las que faltan
-  let count = 0;
-  for (const file of files) {
-    if (applied.has(file)) {
-      continue; // Ya se aplicó, saltar
-    }
-
-    const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
-
-    // Ejecutar migración dentro de una transacción (todo o nada)
-    const migrate = db.transaction(() => {
-      db.exec(sql);
-      db.prepare('INSERT INTO _migrations (name) VALUES (?)').run(file);
-    });
-
-    migrate();
-    count++;
-    console.warn(`  ✓ ${file}`);
-  }
-
-  if (count === 0) {
-    console.warn('  Base de datos al día — no hay migraciones pendientes.');
-  } else {
-    console.warn(`\n  ${count} migración(es) aplicada(s) exitosamente.`);
-  }
-
-  closeDatabase();
+async function run(): Promise<void> {
+  console.warn('\n[ERP Rockality] Aplicando esquema PostgreSQL...\n');
+  await initDatabase();
+  await closeDatabase();
+  console.warn('\n  Esquema aplicado exitosamente.\n');
 }
 
-// Ejecutar si se llama directamente
-console.warn('\n[ERP Rockality] Ejecutando migraciones...\n');
-runMigrations();
-console.warn('');
+run().catch((err) => {
+  console.error('[ERP Rockality] Error aplicando el esquema:', err);
+  process.exit(1);
+});

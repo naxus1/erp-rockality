@@ -2,9 +2,11 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
   ERP Rockality — Infraestructura serverless de bajo costo.
-  Frontend (S3 + CloudFront) -> API Gateway -> Lambda (Express) -> EFS (SQLite).
+  Frontend (S3 + CloudFront) -> API Gateway -> Lambda (Express) -> PostgreSQL (Neon).
   Auth con Cognito. Secreto de cifrado en Secrets Manager.
-  Diseñado para ~2-10 usuarios internos. SIN NAT Gateway (ahorro de costo).
+  La base de datos es Neon (Postgres serverless externo): la Lambda ya NO usa VPC
+  ni EFS; sale a internet (por defecto) para conectarse a Neon vía TLS.
+  Diseñado para ~2-10 usuarios internos.
 
 # ─────────────────────────────────────────────────────────────
 # Parámetros (valores por ambiente en infra/parameters/*.json)
@@ -22,15 +24,14 @@ Parameters:
     Type: String
     Description: Origen(es) permitido(s) para CORS (URL del frontend en CloudFront).
     Default: '*'
-  VpcCidr:
+  DatabaseUrl:
     Type: String
-    Default: 10.0.0.0/16
-  Subnet1Cidr:
-    Type: String
-    Default: 10.0.1.0/24
-  Subnet2Cidr:
-    Type: String
-    Default: 10.0.2.0/24
+    NoEcho: true
+    Description: >
+      Cadena de conexión de Neon (Postgres). Se inyecta como env var DATABASE_URL
+      de la Lambda. NUNCA se guarda en el repo: la provee el CD desde un GitHub
+      Secret (secrets.DATABASE_URL). Usar la connection string POOLED con
+      sslmode=require.
 
 Globals:
   Function:
@@ -40,107 +41,13 @@ Globals:
 
 Resources:
   # ───────────────────────────────────────────────────────────
-  # RED — VPC privada sin salida a internet (sin IGW ni NAT)
+  # RED — La Lambda ya NO usa VPC ni EFS.
   # ───────────────────────────────────────────────────────────
-  Vpc:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: !Ref VpcCidr
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
-      Tags:
-        - { Key: Name, Value: !Sub 'rockality-${Stage}-vpc' }
-        - { Key: Project, Value: rockality }
-
-  PrivateSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref Vpc
-      CidrBlock: !Ref Subnet1Cidr
-      AvailabilityZone: !Select [0, !GetAZs '']
-      Tags:
-        - { Key: Name, Value: !Sub 'rockality-${Stage}-private-1' }
-
-  PrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref Vpc
-      CidrBlock: !Ref Subnet2Cidr
-      AvailabilityZone: !Select [1, !GetAZs '']
-      Tags:
-        - { Key: Name, Value: !Sub 'rockality-${Stage}-private-2' }
-
-  # SG de la Lambda (sin reglas de entrada; salida solo a EFS)
-  LambdaSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: SG de la Lambda del ERP
-      VpcId: !Ref Vpc
-      Tags:
-        - { Key: Name, Value: !Sub 'rockality-${Stage}-sg-lambda' }
-
-  # SG del EFS: solo acepta NFS (2049) desde la Lambda
-  EfsSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: SG del EFS del ERP
-      VpcId: !Ref Vpc
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 2049
-          ToPort: 2049
-          SourceSecurityGroupId: !Ref LambdaSecurityGroup
-      Tags:
-        - { Key: Name, Value: !Sub 'rockality-${Stage}-sg-efs' }
-
-  # NOTA: se eliminó el VPC Interface Endpoint de Secrets Manager (~$14/mes).
-  # La clave de cifrado ahora se inyecta como env var de la Lambda vía dynamic
-  # reference de CloudFormation al desplegar, así que la Lambda ya NO necesita
-  # llamar a Secrets Manager en runtime ni salir de la VPC.
-
-  # ───────────────────────────────────────────────────────────
-  # EFS — Almacenamiento de la base SQLite (cifrado en reposo)
-  # ───────────────────────────────────────────────────────────
-  FileSystem:
-    Type: AWS::EFS::FileSystem
-    Properties:
-      Encrypted: true # cifrado en reposo con KMS (aws/elasticfilesystem)
-      PerformanceMode: generalPurpose
-      ThroughputMode: bursting
-      # Backup automático de EFS (AWS Backup gestionado). Da un punto de
-      # restauración diario del SQLite ante corrupción/borrado accidental.
-      BackupPolicy:
-        Status: ENABLED
-      FileSystemTags:
-        - { Key: Name, Value: !Sub 'rockality-${Stage}-efs' }
-
-  MountTarget1:
-    Type: AWS::EFS::MountTarget
-    Properties:
-      FileSystemId: !Ref FileSystem
-      SubnetId: !Ref PrivateSubnet1
-      SecurityGroups: [!Ref EfsSecurityGroup]
-
-  MountTarget2:
-    Type: AWS::EFS::MountTarget
-    Properties:
-      FileSystemId: !Ref FileSystem
-      SubnetId: !Ref PrivateSubnet2
-      SecurityGroups: [!Ref EfsSecurityGroup]
-
-  AccessPoint:
-    Type: AWS::EFS::AccessPoint
-    Properties:
-      FileSystemId: !Ref FileSystem
-      PosixUser:
-        Uid: '1000'
-        Gid: '1000'
-      RootDirectory:
-        Path: /data
-        CreationInfo:
-          OwnerUid: '1000'
-          OwnerGid: '1000'
-          Permissions: '0750'
+  # Con la migración a Neon (Postgres externo) se eliminaron: la VPC, las
+  # subredes privadas, los Security Groups (Lambda/EFS), el EFS (FileSystem,
+  # MountTargets, AccessPoint) y el mount de la Lambda. La Lambda corre fuera de
+  # VPC, por lo que tiene salida a internet nativa para conectarse a Neon vía TLS.
+  # (El VPC Interface Endpoint de Secrets Manager ya se había eliminado antes.)
 
   # ───────────────────────────────────────────────────────────
   # SECRETS — Clave de cifrado de datos sensibles
@@ -254,42 +161,23 @@ Resources:
       Handler: dist/handler.handler
       CodeUri: ../backend/
       Architectures: [arm64] # Graviton: mas barato y evita cross-build en Mac ARM
-      # CONCURRENCIA: idealmente ReservedConcurrentExecutions=1 para que solo UNA
-      # instancia escriba el SQLite de EFS a la vez (evita corrupcion). Pero la
-      # cuenta esta capada a 10 de concurrencia total y AWS exige dejar >=10 sin
-      # reservar, asi que reservar 1 es rechazado hasta que el limite suba (se
-      # levanta solo con el tiempo/uso de la cuenta). Mientras tanto, la
-      # proteccion la dan: (1) SIN WAL en connection.ts (journal TRUNCATE, seguro
-      # en NFS) y (2) auto-recuperacion si el archivo se corrompe. Cuando el
-      # limite de cuenta supere 10, descomentar:
-      # ReservedConcurrentExecutions: 1
-      VpcConfig:
-        SecurityGroupIds: [!Ref LambdaSecurityGroup]
-        SubnetIds: [!Ref PrivateSubnet1, !Ref PrivateSubnet2]
-      FileSystemConfigs:
-        - Arn: !GetAtt AccessPoint.Arn
-          LocalMountPath: /mnt/data
+      # Sin VpcConfig ni FileSystemConfigs: la Lambda corre fuera de VPC y se
+      # conecta a Neon (Postgres externo) por internet vía TLS. Con Neon (que
+      # tiene concurrencia real) ya NO es necesario reservar concurrencia = 1.
       Environment:
         Variables:
           NODE_ENV: production
-          DB_PATH: /mnt/data/prod.db
+          # Cadena de conexión de Neon. La provee el CD desde un GitHub Secret
+          # (parámetro DatabaseUrl, NoEcho). No vive en el repo.
+          DATABASE_URL: !Ref DatabaseUrl
           ALLOWED_ORIGINS: !Ref AllowedOrigins
           # La clave de cifrado se inyecta como env var resuelta por CloudFormation
           # desde Secrets Manager AL DESPLEGAR (dynamic reference). Así la Lambda
-          # NO llama a Secrets Manager en runtime -> no necesita el VPC endpoint
-          # (~$14/mes menos). El secreto sigue viviendo en Secrets Manager.
+          # NO llama a Secrets Manager en runtime. El secreto sigue en Secrets Manager.
           ENCRYPTION_KEY: !Sub '{{resolve:secretsmanager:${EncryptionKeySecret}}}'
           COGNITO_USER_POOL_ID: !Ref UserPool
           COGNITO_CLIENT_ID: !Ref UserPoolClient
           COGNITO_REGION: !Ref AWS::Region
-      Policies:
-        - Statement:
-            - Sid: MontarEFS
-              Effect: Allow
-              Action:
-                - elasticfilesystem:ClientMount
-                - elasticfilesystem:ClientWrite
-              Resource: !GetAtt FileSystem.Arn
       Events:
         HealthPublic:
           Type: HttpApi
@@ -316,9 +204,6 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /{proxy+}
             Method: ANY
-    DependsOn:
-      - MountTarget1
-      - MountTarget2
 
   # ───────────────────────────────────────────────────────────
   # FRONTEND — S3 privado + CloudFront (OAC)

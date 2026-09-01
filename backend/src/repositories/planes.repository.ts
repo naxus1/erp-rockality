@@ -1,7 +1,7 @@
 /**
  * REPOSITORY — Planes de entrenamiento
  */
-import { getDatabase } from '../db/connection.js';
+import { query, queryOne } from '../db/connection.js';
 
 export interface Plan {
   id: number;
@@ -44,25 +44,22 @@ export interface UpdatePlanData {
   updated_by?: string;
 }
 
-export function findAll(includeInactive = false): Plan[] {
-  const db = getDatabase();
+export async function findAll(includeInactive = false): Promise<Plan[]> {
   const where = includeInactive ? '' : 'WHERE activo = 1';
-  return db.prepare(`SELECT * FROM planes ${where} ORDER BY nombre`).all() as Plan[];
+  const res = await query<Plan>(`SELECT * FROM planes ${where} ORDER BY nombre`);
+  return res.rows;
 }
 
-export function findById(id: number): Plan | undefined {
-  const db = getDatabase();
-  return db.prepare('SELECT * FROM planes WHERE id = ?').get(id) as Plan | undefined;
+export async function findById(id: number): Promise<Plan | undefined> {
+  const res = await query<Plan>('SELECT * FROM planes WHERE id = $1', [id]);
+  return res.rows[0];
 }
 
-export function create(data: CreatePlanData): Plan {
-  const db = getDatabase();
-  const result = db
-    .prepare(
-      `INSERT INTO planes (nombre, modalidad, duracion_dias, precio, aplica_iva, porcentaje_iva, descripcion, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
+export async function create(data: CreatePlanData): Promise<Plan> {
+  const inserted = await queryOne<{ id: number }>(
+    `INSERT INTO planes (nombre, modalidad, duracion_dias, precio, aplica_iva, porcentaje_iva, descripcion, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+    [
       data.nombre,
       data.modalidad,
       data.duracion_dias,
@@ -71,13 +68,13 @@ export function create(data: CreatePlanData): Plan {
       data.porcentaje_iva ?? 19,
       data.descripcion || null,
       data.created_by || null,
-    );
-  return findById(Number(result.lastInsertRowid))!;
+    ],
+  );
+  return (await findById(inserted.id))!;
 }
 
-export function update(id: number, data: UpdatePlanData): Plan | undefined {
-  const db = getDatabase();
-  const current = findById(id);
+export async function update(id: number, data: UpdatePlanData): Promise<Plan | undefined> {
+  const current = await findById(id);
   if (!current) return undefined;
 
   // Si se reactiva el plan (activo pasa a 1), limpiamos el motivo de inactivación
@@ -85,22 +82,23 @@ export function update(id: number, data: UpdatePlanData): Plan | undefined {
   const motivoFinal =
     activoFinal === 1 ? null : (data.motivo_inactivacion ?? current.motivo_inactivacion);
 
-  db.prepare(
-    `UPDATE planes SET nombre = ?, modalidad = ?, duracion_dias = ?, precio = ?,
-     aplica_iva = ?, porcentaje_iva = ?, descripcion = ?, activo = ?, motivo_inactivacion = ?,
-     updated_at = datetime('now'), updated_by = ? WHERE id = ?`,
-  ).run(
-    data.nombre ?? current.nombre,
-    data.modalidad ?? current.modalidad,
-    data.duracion_dias ?? current.duracion_dias,
-    data.precio ?? current.precio,
-    data.aplica_iva ?? current.aplica_iva,
-    data.porcentaje_iva ?? current.porcentaje_iva,
-    data.descripcion ?? current.descripcion,
-    activoFinal,
-    motivoFinal,
-    data.updated_by || null,
-    id,
+  await query(
+    `UPDATE planes SET nombre = $1, modalidad = $2, duracion_dias = $3, precio = $4,
+     aplica_iva = $5, porcentaje_iva = $6, descripcion = $7, activo = $8, motivo_inactivacion = $9,
+     updated_at = now(), updated_by = $10 WHERE id = $11`,
+    [
+      data.nombre ?? current.nombre,
+      data.modalidad ?? current.modalidad,
+      data.duracion_dias ?? current.duracion_dias,
+      data.precio ?? current.precio,
+      data.aplica_iva ?? current.aplica_iva,
+      data.porcentaje_iva ?? current.porcentaje_iva,
+      data.descripcion ?? current.descripcion,
+      activoFinal,
+      motivoFinal,
+      data.updated_by || null,
+      id,
+    ],
   );
   return findById(id);
 }

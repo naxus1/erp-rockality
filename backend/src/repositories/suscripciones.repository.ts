@@ -1,7 +1,7 @@
 /**
  * REPOSITORY — Suscripciones
  */
-import { getDatabase } from '../db/connection.js';
+import { query, queryOne } from '../db/connection.js';
 
 export interface Suscripcion {
   id: number;
@@ -25,46 +25,49 @@ export interface SuscripcionConRelaciones extends Suscripcion {
   dias_restantes: number;
 }
 
+// dias_restantes: diferencia en días entre fecha_fin (TEXT YYYY-MM-DD) y hoy.
+// En Postgres, restar dos date da un integer de días (equivale al CAST previo).
 const SELECT_SUSCRIPCION = `
   SELECT s.*,
     c.nombre as cliente_nombre, c.apellidos as cliente_apellidos,
     p.nombre as plan_nombre, p.modalidad as plan_modalidad,
-    CAST(julianday(s.fecha_fin) - julianday('now') AS INTEGER) as dias_restantes
+    (s.fecha_fin::date - CURRENT_DATE) as dias_restantes
   FROM suscripciones s
   JOIN clientes c ON s.cliente_cedula = c.cedula
   JOIN planes p ON s.plan_id = p.id
 `;
 
-export function findAll(filters?: { estado?: string }): SuscripcionConRelaciones[] {
-  const db = getDatabase();
+export async function findAll(filters?: { estado?: string }): Promise<SuscripcionConRelaciones[]> {
   const conditions: string[] = [];
   const params: string[] = [];
 
   if (filters?.estado) {
-    conditions.push('s.estado = ?');
     params.push(filters.estado);
+    conditions.push(`s.estado = $${params.length}`);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-  return db
-    .prepare(`${SELECT_SUSCRIPCION} ${where} ORDER BY s.fecha_fin ASC`)
-    .all(...params) as SuscripcionConRelaciones[];
+  const res = await query<SuscripcionConRelaciones>(
+    `${SELECT_SUSCRIPCION} ${where} ORDER BY s.fecha_fin ASC`,
+    params,
+  );
+  return res.rows;
 }
 
-export function findByCliente(cedula: string): SuscripcionConRelaciones[] {
-  const db = getDatabase();
-  return db
-    .prepare(`${SELECT_SUSCRIPCION} WHERE s.cliente_cedula = ? ORDER BY s.fecha_inicio DESC`)
-    .all(cedula) as SuscripcionConRelaciones[];
+export async function findByCliente(cedula: string): Promise<SuscripcionConRelaciones[]> {
+  const res = await query<SuscripcionConRelaciones>(
+    `${SELECT_SUSCRIPCION} WHERE s.cliente_cedula = $1 ORDER BY s.fecha_inicio DESC`,
+    [cedula],
+  );
+  return res.rows;
 }
 
-export function findPorVencer(dias: number): SuscripcionConRelaciones[] {
-  const db = getDatabase();
-  return db
-    .prepare(
-      `${SELECT_SUSCRIPCION} WHERE s.estado = 'activa' AND julianday(s.fecha_fin) - julianday('now') BETWEEN 0 AND ? ORDER BY s.fecha_fin ASC`,
-    )
-    .all(dias) as SuscripcionConRelaciones[];
+export async function findPorVencer(dias: number): Promise<SuscripcionConRelaciones[]> {
+  const res = await query<SuscripcionConRelaciones>(
+    `${SELECT_SUSCRIPCION} WHERE s.estado = 'activa' AND (s.fecha_fin::date - CURRENT_DATE) BETWEEN 0 AND $1 ORDER BY s.fecha_fin ASC`,
+    [dias],
+  );
+  return res.rows;
 }
 
 export interface CreateSuscripcionData {
@@ -81,30 +84,30 @@ export interface CreateSuscripcionData {
  * monto_pagado = 0, venta_id = NULL. La fecha_fin se calcula desde la duración del plan.
  * Devuelve undefined si el plan o el cliente no existen.
  */
-export function create(data: CreateSuscripcionData): SuscripcionConRelaciones | undefined {
-  const db = getDatabase();
-
-  const plan = db.prepare('SELECT duracion_dias FROM planes WHERE id = ?').get(data.plan_id) as
-    | { duracion_dias: number }
-    | undefined;
+export async function create(
+  data: CreateSuscripcionData,
+): Promise<SuscripcionConRelaciones | undefined> {
+  const planRes = await query<{ duracion_dias: number }>(
+    'SELECT duracion_dias FROM planes WHERE id = $1',
+    [data.plan_id],
+  );
+  const plan = planRes.rows[0];
   if (!plan) return undefined;
 
-  const cliente = db
-    .prepare('SELECT cedula FROM clientes WHERE cedula = ?')
-    .get(data.cliente_cedula) as { cedula: string } | undefined;
-  if (!cliente) return undefined;
+  const cliRes = await query<{ cedula: string }>('SELECT cedula FROM clientes WHERE cedula = $1', [
+    data.cliente_cedula,
+  ]);
+  if (!cliRes.rows[0]) return undefined;
 
   const fechaInicio = new Date().toISOString().split('T')[0];
   const fechaFin = new Date(Date.now() + plan.duracion_dias * 24 * 60 * 60 * 1000)
     .toISOString()
     .split('T')[0];
 
-  const result = db
-    .prepare(
-      `INSERT INTO suscripciones (cliente_cedula, plan_id, venta_id, fecha_inicio, fecha_fin, monto_pagado, notas, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
+  const inserted = await queryOne<{ id: number }>(
+    `INSERT INTO suscripciones (cliente_cedula, plan_id, venta_id, fecha_inicio, fecha_fin, monto_pagado, notas, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+    [
       data.cliente_cedula,
       data.plan_id,
       data.venta_id ?? null,
@@ -113,33 +116,30 @@ export function create(data: CreateSuscripcionData): SuscripcionConRelaciones | 
       data.monto_pagado ?? 0,
       data.notas || null,
       data.created_by || null,
-    );
+    ],
+  );
 
-  return db
-    .prepare(`${SELECT_SUSCRIPCION} WHERE s.id = ?`)
-    .get(Number(result.lastInsertRowid)) as SuscripcionConRelaciones;
+  const out = await query<SuscripcionConRelaciones>(`${SELECT_SUSCRIPCION} WHERE s.id = $1`, [
+    inserted.id,
+  ]);
+  return out.rows[0];
 }
 
 /** Cuenta cuántas suscripciones de cortesía (plan con precio 0) ha tenido un cliente */
-export function contarCortesias(cedula: string): number {
-  const db = getDatabase();
-  const row = db
-    .prepare(
-      `SELECT COUNT(*) as n
-       FROM suscripciones s JOIN planes p ON s.plan_id = p.id
-       WHERE s.cliente_cedula = ? AND p.precio = 0`,
-    )
-    .get(cedula) as { n: number };
+export async function contarCortesias(cedula: string): Promise<number> {
+  const row = await queryOne<{ n: number }>(
+    `SELECT COUNT(*)::int as n
+     FROM suscripciones s JOIN planes p ON s.plan_id = p.id
+     WHERE s.cliente_cedula = $1 AND p.precio = 0`,
+    [cedula],
+  );
   return row.n;
 }
 
 /** Marcar como vencidas las que ya pasaron fecha_fin */
-export function actualizarVencidas(): number {
-  const db = getDatabase();
-  const result = db
-    .prepare(
-      "UPDATE suscripciones SET estado = 'vencida' WHERE estado = 'activa' AND date(fecha_fin) < date('now')",
-    )
-    .run();
-  return result.changes;
+export async function actualizarVencidas(): Promise<number> {
+  const res = await query(
+    "UPDATE suscripciones SET estado = 'vencida' WHERE estado = 'activa' AND fecha_fin::date < CURRENT_DATE",
+  );
+  return res.rowCount ?? 0;
 }
