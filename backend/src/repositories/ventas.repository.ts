@@ -42,7 +42,7 @@ export interface DetalleVentaItem {
 }
 
 export interface CreateVentaData {
-  cliente_cedula?: string;
+  cliente_cedula: string; // obligatorio: toda venta va atada a un cliente
   tipo: 'nueva' | 'recompra' | 'historico';
   items: DetalleVentaItem[];
   notas?: string;
@@ -178,11 +178,18 @@ export async function create(data: CreateVentaData): Promise<VentaDetallada> {
           iva += Math.round(itemSubtotal * (producto.porcentaje_iva / 100));
         }
       } else if (item.tipo_item === 'plan' && item.plan_id) {
-        const planRes = await client.query<{ aplica_iva: number; porcentaje_iva: number }>(
-          'SELECT aplica_iva, porcentaje_iva FROM planes WHERE id = $1',
-          [item.plan_id],
-        );
+        const planRes = await client.query<{
+          aplica_iva: number;
+          porcentaje_iva: number;
+          precio: number;
+        }>('SELECT aplica_iva, porcentaje_iva, precio FROM planes WHERE id = $1', [item.plan_id]);
         const plan = planRes.rows[0];
+        // Los planes de cortesía (precio 0) NO son vendibles: una semana de
+        // cortesía no es una venta. Se otorga como suscripción directa desde la
+        // ficha del cliente. Rechazamos para que no entre por la API.
+        if (plan && plan.precio === 0) {
+          throw new Error('Los planes de cortesía no se pueden vender; otórgalos como cortesía.');
+        }
         if (plan?.aplica_iva) {
           iva += Math.round(itemSubtotal * (plan.porcentaje_iva / 100));
         }

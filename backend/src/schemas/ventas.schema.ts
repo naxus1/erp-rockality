@@ -10,7 +10,12 @@ const detalleItemSchema = z.object({
 });
 
 export const createVentaSchema = z.object({
-  cliente_cedula: z.string().min(5).transform(toClean).optional(),
+  // El cliente es OBLIGATORIO: toda venta debe quedar atada a un cliente (no
+  // dejar ventas "sueltas" sin dueño). Antes era opcional.
+  cliente_cedula: z
+    .string({ required_error: 'El cliente es obligatorio' })
+    .min(5, 'El cliente es obligatorio')
+    .transform(toClean),
   tipo: z.enum(['nueva', 'recompra', 'historico']),
   items: z.array(detalleItemSchema).min(1, 'La venta debe tener al menos un item'),
   notas: z.string().max(500).transform(toUpper).optional(),

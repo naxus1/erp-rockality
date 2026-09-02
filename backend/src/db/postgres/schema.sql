@@ -261,7 +261,7 @@ CREATE INDEX IF NOT EXISTS idx_planes_modalidad ON planes(modalidad);
 
 CREATE TABLE IF NOT EXISTS ventas (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  cliente_cedula TEXT REFERENCES clientes(cedula),
+  cliente_cedula TEXT NOT NULL REFERENCES clientes(cedula),
   usuario_id TEXT NOT NULL,
   fecha TIMESTAMPTZ NOT NULL DEFAULT now(),
   subtotal BIGINT NOT NULL,
@@ -281,6 +281,10 @@ CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha);
 CREATE INDEX IF NOT EXISTS idx_ventas_cliente ON ventas(cliente_cedula);
 CREATE INDEX IF NOT EXISTS idx_ventas_tipo ON ventas(tipo);
 CREATE INDEX IF NOT EXISTS idx_ventas_estado ON ventas(estado);
+-- Cliente obligatorio en ventas: forzar NOT NULL también en tablas ya creadas
+-- (CREATE TABLE IF NOT EXISTS no altera una tabla existente). Idempotente: si ya
+-- es NOT NULL no hace nada. La tabla no debe tener filas con cliente_cedula NULL.
+ALTER TABLE ventas ALTER COLUMN cliente_cedula SET NOT NULL;
 
 CREATE TABLE IF NOT EXISTS detalle_venta (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

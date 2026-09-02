@@ -289,16 +289,24 @@ export default function Ventas() {
     setItems(items.map((item, i) => (i === index ? { ...item, cantidad } : item)));
   };
   const totalVenta = items.reduce((sum, i) => sum + i.precio_unitario * i.cantidad, 0);
+  // Planes vendibles: se excluyen los de cortesía (precio 0). Una semana de
+  // cortesía NO es una venta (no hay ingreso); se otorga desde la ficha del
+  // cliente ("Dar semana de cortesía") y se registra solo como suscripción.
+  const planesVendibles = planes.filter((p) => p.precio > 0);
 
   const registrarVenta = async () => {
     setError('');
     setSuccess('');
+    if (!clienteCedula) {
+      setError('Selecciona el cliente (es obligatorio: la venta debe quedar atada a un cliente)');
+      return;
+    }
     if (items.length === 0) {
       setError('Agrega al menos un producto o plan');
       return;
     }
     const body: Record<string, unknown> = {
-      cliente_cedula: clienteCedula || undefined,
+      cliente_cedula: clienteCedula,
       tipo,
       items: items.map((i) => ({
         tipo_item: i.tipo_item,
@@ -806,7 +814,9 @@ export default function Ventas() {
         <div className="lg:col-span-2 space-y-4">
           {/* Cliente */}
           <div className="p-4 rounded-xl neu-flat">
-            <h3 className="text-sm font-medium mb-2">Cliente (opcional)</h3>
+            <h3 className="text-sm font-medium mb-2">
+              Cliente <span className="text-red-500">*</span>
+            </h3>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -867,7 +877,7 @@ export default function Ventas() {
                   </option>
                 ))}
             </select>
-            {planes.length > 0 && (
+            {planesVendibles.length > 0 && (
               <>
                 <h3 className="text-sm font-medium mb-2 mt-3">Agregar plan</h3>
                 <select
@@ -878,7 +888,7 @@ export default function Ventas() {
                   className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 >
                   <option value="">-- Seleccionar plan --</option>
-                  {planes.map((p) => (
+                  {planesVendibles.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.nombre} ({p.modalidad}, {p.duracion_dias} días) — {formatCOP(p.precio)}
                     </option>
@@ -996,9 +1006,13 @@ export default function Ventas() {
           </div>
           <button
             onClick={registrarVenta}
-            disabled={items.length === 0}
+            disabled={items.length === 0 || !clienteCedula}
             className="w-full bg-gray-900 text-white py-2.5 rounded text-sm font-medium disabled:bg-gray-400"
-            title="Guardar y registrar la venta"
+            title={
+              !clienteCedula
+                ? 'Selecciona el cliente (obligatorio)'
+                : 'Guardar y registrar la venta'
+            }
           >
             Registrar venta
           </button>
