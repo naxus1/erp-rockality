@@ -204,4 +204,100 @@ router.get(
   }),
 );
 
+// GET /api/reportes/cortesias — Reporte de semanas de cortesía.
+// Una cortesía es una suscripción de un plan con precio 0 (NO es una venta).
+// Devuelve: total, desglose por mes (YYYY-MM), por año, y cuántos prospectos
+// "se convirtieron" (tuvieron cortesía y luego hicieron una venta real).
+router.get(
+  '/cortesias',
+  asyncHandler(async (_req: Request, res: Response) => {
+    // Total de cortesías otorgadas
+    const totalRes = await queryOne<{ total: number; clientes: number }>(
+      `SELECT COUNT(*)::int AS total, COUNT(DISTINCT s.cliente_cedula)::int AS clientes
+         FROM suscripciones s JOIN planes p ON s.plan_id = p.id
+        WHERE p.precio = 0`,
+    );
+
+    // Por mes (últimos 24 meses con datos), usando created_at
+    const porMesRes = await query<{ periodo: string; total: number }>(
+      `SELECT to_char(s.created_at, 'YYYY-MM') AS periodo, COUNT(*)::int AS total
+         FROM suscripciones s JOIN planes p ON s.plan_id = p.id
+        WHERE p.precio = 0
+        GROUP BY 1 ORDER BY 1 DESC
+        LIMIT 24`,
+    );
+
+    // Por año
+    const porAnioRes = await query<{ periodo: string; total: number }>(
+      `SELECT to_char(s.created_at, 'YYYY') AS periodo, COUNT(*)::int AS total
+         FROM suscripciones s JOIN planes p ON s.plan_id = p.id
+        WHERE p.precio = 0
+        GROUP BY 1 ORDER BY 1 DESC`,
+    );
+
+    // Convertidos: clientes que tuvieron cortesía y además tienen al menos una
+    // venta real (no anulada, total > 0). No exige que la venta sea posterior:
+    // basta con que el prospecto de cortesía haya terminado comprando.
+    const convertidosRes = await queryOne<{ convertidos: number }>(
+      `SELECT COUNT(*)::int AS convertidos FROM (
+         SELECT DISTINCT s.cliente_cedula
+           FROM suscripciones s JOIN planes p ON s.plan_id = p.id
+          WHERE p.precio = 0
+            AND EXISTS (
+              SELECT 1 FROM ventas v
+               WHERE v.cliente_cedula = s.cliente_cedula
+                 AND v.estado != 'anulada' AND v.total > 0
+            )
+       ) t`,
+    );
+
+    // Detalle de convertidos (para listarlos)
+    const detalleRes = await query<{
+      cedula: string;
+      nombre: string | null;
+      apellidos: string | null;
+      cortesias: number;
+      ventas: number;
+    }>(
+      `SELECT c.cedula, c.nombre, c.apellidos,
+              COUNT(DISTINCT s.id)::int AS cortesias,
+              (SELECT COUNT(*)::int FROM ventas v
+                WHERE v.cliente_cedula = c.cedula AND v.estado != 'anulada' AND v.total > 0) AS ventas
+         FROM suscripciones s
+         JOIN planes p ON s.plan_id = p.id
+         JOIN clientes c ON c.cedula = s.cliente_cedula
+        WHERE p.precio = 0
+          AND EXISTS (
+            SELECT 1 FROM ventas v
+             WHERE v.cliente_cedula = s.cliente_cedula
+               AND v.estado != 'anulada' AND v.total > 0
+          )
+        GROUP BY c.cedula, c.nombre, c.apellidos
+        ORDER BY c.nombre, c.apellidos`,
+    );
+
+    const clientes = totalRes.clientes;
+    const convertidos = convertidosRes.convertidos;
+    const tasa = clientes > 0 ? Math.round((convertidos / clientes) * 100) : 0;
+
+    res.json({
+      success: true,
+      data: {
+        total: totalRes.total,
+        clientes_con_cortesia: clientes,
+        convertidos,
+        tasa_conversion: tasa, // % de prospectos de cortesía que terminaron comprando
+        por_mes: porMesRes.rows,
+        por_anio: porAnioRes.rows,
+        convertidos_detalle: detalleRes.rows.map((d) => ({
+          cedula: d.cedula,
+          cliente: d.nombre ? `${d.nombre} ${d.apellidos}` : d.cedula,
+          cortesias: d.cortesias,
+          ventas: d.ventas,
+        })),
+      },
+    });
+  }),
+);
+
 export default router;
