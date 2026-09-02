@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS canales_captacion (
 CREATE UNIQUE INDEX IF NOT EXISTS ux_canales_captacion_nombre ON canales_captacion (UPPER(nombre));
 INSERT INTO canales_captacion (nombre) VALUES
   ('REDES SOCIALES'), ('EVENTOS'), ('WALKING'), ('REFERIDO'), ('OTRO')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS sexos (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS sexos (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ux_sexos_nombre ON sexos (UPPER(nombre));
 INSERT INTO sexos (nombre) VALUES ('MASCULINO'), ('FEMENINO'), ('OTRO')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS ciudades (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS ciudades (
 CREATE UNIQUE INDEX IF NOT EXISTS ux_ciudades_nombre ON ciudades (UPPER(nombre));
 INSERT INTO ciudades (nombre) VALUES
   ('BOGOTA'), ('MEDELLIN'), ('CALI'), ('BARRANQUILLA'), ('BUCARAMANGA')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS categorias_producto (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -55,7 +55,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_categorias_producto_nombre ON categorias_pr
 INSERT INTO categorias_producto (nombre, prefijo_sku, descripcion) VALUES
   ('ACCESORIOS', 'ACC', 'Guantes, vendas y accesorios de entrenamiento'),
   ('SUPLEMENTOS', 'SUPL', 'Creatina, proteína y suplementos deportivos')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS unidades_medida (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -66,7 +66,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_unidades_medida_nombre ON unidades_medida (
 INSERT INTO unidades_medida (nombre, abreviatura) VALUES
   ('UNIDAD', 'und'), ('GRAMOS', 'g'), ('MILILITROS', 'ml'),
   ('KILOGRAMOS', 'kg'), ('LITROS', 'L')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS metodos_pago (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS metodos_pago (
 CREATE UNIQUE INDEX IF NOT EXISTS ux_metodos_pago_nombre ON metodos_pago (UPPER(nombre));
 INSERT INTO metodos_pago (nombre) VALUES
   ('EFECTIVO'), ('TRANSFERENCIA'), ('TARJETA'), ('NEQUI'), ('DAVIPLATA')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS tipos_tercero (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS tipos_tercero (
 CREATE UNIQUE INDEX IF NOT EXISTS ux_tipos_tercero_nombre ON tipos_tercero (UPPER(nombre));
 INSERT INTO tipos_tercero (nombre) VALUES
   ('PROVEEDOR'), ('EMPLEADO'), ('EMPRESA DE SERVICIOS')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS gerencias (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS gerencias (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ux_gerencias_nombre ON gerencias (UPPER(nombre));
 INSERT INTO gerencias (nombre) VALUES ('DEPORTIVA'), ('ADMINISTRATIVA')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS tipos_gasto (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS tipos_gasto (
 CREATE UNIQUE INDEX IF NOT EXISTS ux_tipos_gasto_nombre ON tipos_gasto (UPPER(nombre));
 INSERT INTO tipos_gasto (nombre) VALUES
   ('NOMINA'), ('GASTOS GENERALES'), ('GASTOS FIJOS')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS categorias_gasto (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -118,7 +118,7 @@ INSERT INTO categorias_gasto (nombre, descripcion) VALUES
   ('NOMINA ENTRENADORES', 'Pagos a entrenadores'),
   ('NOMINA ADMINISTRATIVOS', 'Pagos a personal administrativo'),
   ('OTROS', 'Gastos no clasificados')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS variantes_producto (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -128,7 +128,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_variantes_producto_nombre ON variantes_prod
 INSERT INTO variantes_producto (nombre) VALUES
   ('VAINILLA'), ('CHOCOLATE'), ('COOKIES & CREAM'),
   ('CHOCOLATE PEANUT BUTTER'), ('FRESA'), ('SIN SABOR'), ('NA')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 -- ── Usuarios del sistema y auditoría ─────────────────────
 CREATE TABLE IF NOT EXISTS usuarios_sistema (
