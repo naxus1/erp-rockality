@@ -32,6 +32,7 @@ con AWS SAM.
 - [ ] Health check post-deploy con reintentos (el cold start + fetch del secreto tarda).
 - [ ] SQLite sobre EFS: NUNCA usar WAL (usar TRUNCATE); concurrencia reservada = 1; backups de EFS activos. Considerar base gestionada si crece el uso.
 - [ ] Catálogos/enum-like: forma canónica única (MAYÚSCULAS sin tildes) + índice único sobre `UPPER(nombre)`. No quitar tildes a nombres propios. Evitar `\u0001` en regex (rompe eslint `no-control-regex`).
+- [ ] Relación obligatoria del negocio = columna `NOT NULL` en la BD (no solo validación de app). Cambiar la obligatoriedad de una columna existente requiere `ALTER TABLE ... SET NOT NULL` (el `CREATE TABLE IF NOT EXISTS` no la altera); el `ALTER` falla si hay filas NULL.
 
 ---
 
@@ -295,6 +296,30 @@ sqlite_master`; si lanza "not a database/malformed/disk I/O", el archivo
 - **Recomendación**: para catálogos/enum-like, decidir desde el diseño una única
   forma canónica (MAYÚSCULAS sin tildes) y garantizarla con índice único sobre la
   expresión normalizada. Para nombres propios, NO quitar tildes.
+
+### 17. Integridad referencial "blanda": ventas quedaban sin cliente
+
+- **Síntoma**: una venta podía registrarse **sin cliente** (`cliente_cedula = NULL`),
+  quedando "suelta" sin dueño. La UI lo mostraba como "Cliente (opcional)".
+- **Causa**: el cliente era opcional en las 4 capas (Zod `.optional()`, tipo del
+  repo `cliente_cedula?`, columna `TEXT REFERENCES clientes(cedula)` **sin**
+  `NOT NULL`, y el frontend no validaba). Un FK que permite NULL NO obliga a
+  tener relación; solo valida que, si hay valor, exista.
+- **Solución**: cliente OBLIGATORIO en las 4 capas a la vez (defensa en
+  profundidad): schema Zod requerido, tipo del repo requerido, columna
+  `NOT NULL` en la BD, y el frontend valida + deshabilita el botón. Así, aunque
+  alguien salte la UI, el backend y la propia BD rechazan la venta sin cliente.
+- **Trampa de BD (importante)**: `CREATE TABLE IF NOT EXISTS` **no altera** una
+  tabla ya existente. Poner `NOT NULL` solo en la definición inline del
+  `schema.sql` NO afecta a la tabla que ya está en Neon. Hay que añadir un
+  `ALTER TABLE <t> ALTER COLUMN <c> SET NOT NULL` (idempotente: si ya es NOT NULL
+  no hace nada) para que aplique al re-ejecutar el schema en el arranque. El
+  `ALTER` **falla** si hay filas con NULL, así que primero verificar/limpiar
+  (aquí la tabla `ventas` estaba vacía).
+- **Recomendación**: cuando una relación es obligatoria en el negocio, hacerla
+  `NOT NULL` en la BD desde el inicio (no confiar solo en la validación de la
+  app), y recordar que cambiar la obligatoriedad de una columna existente
+  requiere `ALTER`, no basta editar el `CREATE TABLE`.
 
 ### (operativo) Docker Desktop se pausa durante los builds
 
