@@ -42,7 +42,7 @@ export interface DetalleVentaItem {
 }
 
 export interface CreateVentaData {
-  cliente_cedula?: string;
+  cliente_cedula: string; // obligatorio: toda venta va atada a un cliente
   tipo: 'nueva' | 'recompra' | 'historico';
   items: DetalleVentaItem[];
   notas?: string;

@@ -293,12 +293,16 @@ export default function Ventas() {
   const registrarVenta = async () => {
     setError('');
     setSuccess('');
+    if (!clienteCedula) {
+      setError('Selecciona el cliente (es obligatorio: la venta debe quedar atada a un cliente)');
+      return;
+    }
     if (items.length === 0) {
       setError('Agrega al menos un producto o plan');
       return;
     }
     const body: Record<string, unknown> = {
-      cliente_cedula: clienteCedula || undefined,
+      cliente_cedula: clienteCedula,
       tipo,
       items: items.map((i) => ({
         tipo_item: i.tipo_item,
@@ -806,7 +810,9 @@ export default function Ventas() {
         <div className="lg:col-span-2 space-y-4">
           {/* Cliente */}
           <div className="p-4 rounded-xl neu-flat">
-            <h3 className="text-sm font-medium mb-2">Cliente (opcional)</h3>
+            <h3 className="text-sm font-medium mb-2">
+              Cliente <span className="text-red-500">*</span>
+            </h3>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -996,9 +1002,13 @@ export default function Ventas() {
           </div>
           <button
             onClick={registrarVenta}
-            disabled={items.length === 0}
+            disabled={items.length === 0 || !clienteCedula}
             className="w-full bg-gray-900 text-white py-2.5 rounded text-sm font-medium disabled:bg-gray-400"
-            title="Guardar y registrar la venta"
+            title={
+              !clienteCedula
+                ? 'Selecciona el cliente (obligatorio)'
+                : 'Guardar y registrar la venta'
+            }
           >
             Registrar venta
           </button>
