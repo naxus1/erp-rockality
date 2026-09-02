@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Validar antes de git push",
+      "trigger": "PreToolUse",
+      "matcher": "execute_bash|control_bash_process|.*bash.*|.*shell.*|.*terminal.*",
+      "action": {
+        "type": "command",
+        "command": "bash \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)/scripts/prepush-hook.sh\"",
+        "timeout": 600
+      }
+    }
+  ]
+}
