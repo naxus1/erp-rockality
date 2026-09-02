@@ -31,6 +31,7 @@ con AWS SAM.
 - [ ] No hacer `throw` síncrono en la carga de config si el valor se resuelve async (Secrets Manager). Validar presencia de la fuente (env o ARN), no el valor final.
 - [ ] Health check post-deploy con reintentos (el cold start + fetch del secreto tarda).
 - [ ] SQLite sobre EFS: NUNCA usar WAL (usar TRUNCATE); concurrencia reservada = 1; backups de EFS activos. Considerar base gestionada si crece el uso.
+- [ ] Catálogos/enum-like: forma canónica única (MAYÚSCULAS sin tildes) + índice único sobre `UPPER(nombre)`. No quitar tildes a nombres propios. Evitar `\u0001` en regex (rompe eslint `no-control-regex`).
 
 ---
 
@@ -259,6 +260,41 @@ sqlite_master`; si lanza "not a database/malformed/disk I/O", el archivo
 - **Recomendación oil & gas**: si el proyecto es relacional, un Postgres gestionado
   (Neon/Supabase/RDS) evita toda la fragilidad de SQLite-sobre-EFS y saca la Lambda
   de la VPC. Planear async desde el inicio (no arrastrar una capa de datos síncrona).
+
+### 16. Catálogos duplicados por mayúsculas/tildes (unicidad case/acento-insensible)
+
+- **Síntoma**: en los catálogos (ciudades, métodos de pago, etc.) aparecían
+  valores inconsistentes: los seeds en formato mixto (`Bogotá`, `Redes sociales`)
+  conviviendo con los agregados por la app en MAYÚSCULAS (`CAJICÁ`), y riesgo de
+  "repetidos" que solo difieren por acento o mayúsculas (`BOGOTA` vs `Bogotá`).
+- **Causa**: el `UNIQUE(nombre)` de Postgres es **case- y accent-sensitive**, así
+  que `Bogotá` y `BOGOTA` se consideran distintos y ambos podrían coexistir. Los
+  seeds originales no estaban normalizados y la ruta solo pasaba a MAYÚSCULAS
+  (sin quitar tildes).
+- **Solución aplicada**:
+  1. **Normalizar al guardar** con un helper `toCatalogo()` (`schemas/text.ts`):
+     MAYÚSCULAS + colapso de espacios + quita diacríticos vía
+     `normalize('NFD').replace(/[\u0300-\u036f]/g,'')`, **preservando la Ñ**
+     (se protege con un placeholder ANTES de NFD, porque la Ñ se descompone en
+     `N`+tilde). Se aplica SOLO a catálogos (`catalogos.routes.ts` y el `nombre`
+     de `categorias-producto`). Los datos con nombres propios (clientes,
+     terceros, direcciones, notas) siguen con `toUpper()` y **conservan tildes**.
+  2. **Unicidad en la BD** con un índice de expresión:
+     `CREATE UNIQUE INDEX ux_<tabla>_nombre ON <tabla> (UPPER(nombre))` en vez del
+     `UNIQUE(nombre)` plano. Como los valores ya entran sin tildes, `UPPER()`
+     basta para bloquear duplicados; el `INSERT ... ON CONFLICT DO NOTHING` de los
+     seeds ahora choca contra ese índice (no contra la columna).
+  3. **Datos existentes**: script one-off idempotente que colapsa posibles
+     duplicados (reasignando FKs al id sobreviviente) y hace
+     `UPDATE ... SET nombre = translate(upper(nombre), 'ÁÉÍÓÚ...', 'AEIOU...')`.
+     Se corrió primero en `--dry` (ROLLBACK) para confirmar que no había
+     colisiones antes del COMMIT.
+- **Trampa de tooling**: usar un carácter de control (`\u0001`) como sentinela en
+  la regex dispara la regla eslint `no-control-regex` y rompe el CI. Usar un
+  placeholder **alfabético** improbable (p. ej. `XX_ENYE_XX`) en su lugar.
+- **Recomendación**: para catálogos/enum-like, decidir desde el diseño una única
+  forma canónica (MAYÚSCULAS sin tildes) y garantizarla con índice único sobre la
+  expresión normalizada. Para nombres propios, NO quitar tildes.
 
 ### (operativo) Docker Desktop se pausa durante los builds
 

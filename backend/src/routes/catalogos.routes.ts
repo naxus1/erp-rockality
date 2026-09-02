@@ -7,7 +7,7 @@
 import { Router, Request, Response } from 'express';
 import { query } from '../db/connection.js';
 import { asyncHandler } from '../middleware/async-handler.js';
-import { toUpper } from '../schemas/text.js';
+import { toCatalogo } from '../schemas/text.js';
 
 const router = Router();
 
@@ -73,7 +73,7 @@ router.post(
         .json({ success: false, error: 'El nombre es obligatorio (mín 2 caracteres)' });
       return;
     }
-    const nombre = toUpper(nombreRaw);
+    const nombre = toCatalogo(nombreRaw);
 
     try {
       const insertRes = await query(
@@ -109,7 +109,7 @@ router.put(
         .json({ success: false, error: 'El nombre es obligatorio (mín 2 caracteres)' });
       return;
     }
-    const nombre = toUpper(nombreRaw);
+    const nombre = toCatalogo(nombreRaw);
 
     const existingRes = await query(`SELECT * FROM ${config.tabla} WHERE id = $1`, [
       Number(req.params.id),

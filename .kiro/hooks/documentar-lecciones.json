@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Documentar lecciones y actualizar docs al terminar",
+      "trigger": "Stop",
+      "action": {
+        "type": "agent",
+        "prompt": "Antes de dar por cerrada la tarea, revisa lo que hiciste en esta ejecución y actualiza la documentación del proyecto. Sé conservador: si NO hubo nada digno de documentar, no inventes ni edites archivos; responde brevemente \"Sin cambios de documentación\" y termina.\n\nDocumenta SOLO si en esta ejecución ocurrió algo de esto:\n- Un problema real con causa y solución (bug, fallo de deploy, comportamiento inesperado, trampa de una herramienta/servicio).\n- Un cambio de arquitectura, infraestructura, contrato de API, esquema de BD o flujo de despliegue.\n- Una decisión técnica no obvia que convenga recordar (por qué se eligió X sobre Y).\n- Un hallazgo o corrección de seguridad.\n\nCómo documentar (usa los archivos que YA existen en docs/, respeta su formato y no dupliques):\n- Lecciones/problemas con causa->solución: agrega una entrada a docs/LECCIONES_DEPLOY.md (numérala siguiendo la secuencia existente y actualiza el checklist rápido si aplica). Incluye una recomendación reutilizable.\n- Cambios de operación/infra/despliegue: actualiza docs/RUNBOOK_AWS.md.\n- Cambios de estado de un plan o migración: actualiza el documento de plan correspondiente (p. ej. docs/PLAN_MIGRACION_BD.md, docs/HANDOFF_MIGRACION_NEON.md).\n\nReglas:\n- Escribe en español, claro y conciso, en el mismo estilo del documento que edites.\n- No expongas secretos ni credenciales (usa nombres de variables/placeholder, nunca el valor).\n- Tras editar, verifica el formato con \"npx prettier --check\" sobre los .md/.json que tocaste y corrígelo si hace falta.\n- No hagas commits ni push automáticamente: deja los cambios en el working tree y resume al usuario qué documentaste (archivos y una línea por entrada) para que él decida cuándo subirlo.\n- Si creaste código nuevo relevante sin documentar (funciones/módulos/endpoints), añade o actualiza comentarios/README pertinentes de forma proporcional al cambio."
+      }
+    }
+  ]
+}

@@ -220,3 +220,22 @@ Plan para cuando existan los datos totales del gimnasio (Excel/CSV/otra base):
 > La base de producción hoy está **vacía a propósito** (sin datos de prueba). La
 > primera fase es probar el flujo con los 4 usuarios; luego se corrigen bugs; luego
 > se migran los datos reales.
+
+## Automatización — Hook de documentación (Kiro)
+
+Hay un **agent hook** que se dispara al terminar cada ejecución del agente y
+mantiene la documentación al día.
+
+- **Archivo**: `.kiro/hooks/documentar-lecciones.json`
+- **Disparador**: `Stop` (al finalizar una respuesta del agente).
+- **Acción** (tipo `agent`): revisa lo hecho en la ejecución y, SOLO si hubo algo
+  relevante (problema con causa→solución, cambio de infra/API/BD/despliegue,
+  decisión técnica no obvia, o hallazgo/corrección de seguridad), actualiza el
+  documento que corresponda en `docs/` (LECCIONES_DEPLOY, RUNBOOK, PLAN/HANDOFF)
+  respetando su formato. Si no hay nada digno, responde "Sin cambios de
+  documentación" y no toca archivos.
+- **Garantías**: no expone secretos, no hace commits/push (deja los cambios en el
+  working tree para que la persona decida cuándo subirlos), y verifica el formato
+  con `npx prettier --check`.
+- **Activación**: los hooks se cargan al inicio de sesión; el cambio aplica en la
+  siguiente sesión de Kiro. Se puede ver/editar desde el panel "Agent Hooks".
