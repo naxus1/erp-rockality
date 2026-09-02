@@ -4,8 +4,15 @@
 import { Router, Request, Response } from 'express';
 import { query } from '../db/connection.js';
 import { asyncHandler } from '../middleware/async-handler.js';
+import { requireRole } from '../middleware/auth.js';
 
 const router = Router();
+
+// Gestion de usuarios del sistema y lectura del log de auditoria: SOLO admin.
+// El requireAuth global (routes/index.ts) ya poblo req.user antes de montar
+// estas rutas; aqui endurecemos porque crear/editar usuarios y ver la
+// auditoria es sensible. gerente/vendedor reciben 403 en todo /api/usuarios.
+router.use(requireRole('admin'));
 
 interface Usuario {
   id: string;
