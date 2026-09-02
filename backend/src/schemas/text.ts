@@ -34,3 +34,30 @@ export function toUpper(value: string): string {
 export function toClean(value: string): string {
   return normalizeSpaces(value);
 }
+
+/**
+ * Normalización para NOMBRES DE CATÁLOGO (ciudades, métodos de pago, sexos,
+ * categorías, etc.): MAYÚSCULAS + espacios normalizados + SIN TILDES/diacríticos.
+ *
+ * Quitar los diacríticos evita "repetidos" que solo difieren por acentos
+ * (BOGOTÁ vs BOGOTA, CHÍA vs CHIA) y hace que el índice único case/acento-
+ * insensible del catálogo trate esos valores como el mismo. La Ñ se PRESERVA
+ * (no es un acento sino una letra propia del español).
+ *
+ * OJO: usar SOLO en catálogos. Los datos maestros con nombres propios
+ * (clientes.nombre, apellidos, direcciones, notas) usan toUpper() y CONSERVAN
+ * las tildes.
+ */
+export function toCatalogo(value: string): string {
+  // Placeholder alfabético (improbable en un nombre) para proteger la Ñ del
+  // despojo de diacríticos, ya que en NFD la Ñ se separa en N + tilde (U+0303)
+  // y se perdería. Se usa texto normal (no un carácter de control) para no
+  // disparar la regla eslint no-control-regex.
+  const ENYE = 'XX_ENYE_XX';
+  return normalizeSpaces(value)
+    .toLocaleUpperCase('es-CO')
+    .replace(/Ñ/g, ENYE)
+    .normalize('NFD') // separa letra base y diacrítico (Á -> A + ´)
+    .replace(/[\u0300-\u036f]/g, '') // elimina los diacríticos combinados
+    .replace(new RegExp(ENYE, 'g'), 'Ñ'); // restaura la Ñ
+}
