@@ -14,105 +14,121 @@
 -- Idempotente: usa CREATE TABLE IF NOT EXISTS y ON CONFLICT en seeds.
 
 -- ── Catálogos ────────────────────────────────────────────
+-- Convención de catálogos: el nombre se guarda en MAYÚSCULAS y SIN TILDES
+-- (la app normaliza con toCatalogo() antes de insertar). Para impedir
+-- "repetidos" que solo difieran por mayúsculas, la unicidad se hace con un
+-- ÍNDICE ÚNICO sobre UPPER(nombre) en vez del UNIQUE(nombre) plano. Como los
+-- valores ya entran sin tildes, UPPER() basta para bloquear duplicados.
 CREATE TABLE IF NOT EXISTS canales_captacion (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nombre TEXT NOT NULL UNIQUE
+  nombre TEXT NOT NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS ux_canales_captacion_nombre ON canales_captacion (UPPER(nombre));
 INSERT INTO canales_captacion (nombre) VALUES
-  ('Redes sociales'), ('Eventos'), ('Walking'), ('Referido'), ('Otro')
-ON CONFLICT (nombre) DO NOTHING;
+  ('REDES SOCIALES'), ('EVENTOS'), ('WALKING'), ('REFERIDO'), ('OTRO')
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS sexos (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nombre TEXT NOT NULL UNIQUE
+  nombre TEXT NOT NULL
 );
-INSERT INTO sexos (nombre) VALUES ('Masculino'), ('Femenino'), ('Otro')
-ON CONFLICT (nombre) DO NOTHING;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_sexos_nombre ON sexos (UPPER(nombre));
+INSERT INTO sexos (nombre) VALUES ('MASCULINO'), ('FEMENINO'), ('OTRO')
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS ciudades (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nombre TEXT NOT NULL UNIQUE
+  nombre TEXT NOT NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS ux_ciudades_nombre ON ciudades (UPPER(nombre));
 INSERT INTO ciudades (nombre) VALUES
-  ('Bogotá'), ('Medellín'), ('Cali'), ('Barranquilla'), ('Bucaramanga')
-ON CONFLICT (nombre) DO NOTHING;
+  ('BOGOTA'), ('MEDELLIN'), ('CALI'), ('BARRANQUILLA'), ('BUCARAMANGA')
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS categorias_producto (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nombre TEXT NOT NULL UNIQUE,
+  nombre TEXT NOT NULL,
   prefijo_sku TEXT NOT NULL,
   descripcion TEXT
 );
+CREATE UNIQUE INDEX IF NOT EXISTS ux_categorias_producto_nombre ON categorias_producto (UPPER(nombre));
 INSERT INTO categorias_producto (nombre, prefijo_sku, descripcion) VALUES
-  ('Accesorios', 'ACC', 'Guantes, vendas y accesorios de entrenamiento'),
-  ('Suplementos', 'SUPL', 'Creatina, proteína y suplementos deportivos')
-ON CONFLICT (nombre) DO NOTHING;
+  ('ACCESORIOS', 'ACC', 'Guantes, vendas y accesorios de entrenamiento'),
+  ('SUPLEMENTOS', 'SUPL', 'Creatina, proteína y suplementos deportivos')
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS unidades_medida (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nombre TEXT NOT NULL UNIQUE,
+  nombre TEXT NOT NULL,
   abreviatura TEXT NOT NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS ux_unidades_medida_nombre ON unidades_medida (UPPER(nombre));
 INSERT INTO unidades_medida (nombre, abreviatura) VALUES
-  ('Unidad', 'und'), ('Gramos', 'g'), ('Mililitros', 'ml'),
-  ('Kilogramos', 'kg'), ('Litros', 'L')
-ON CONFLICT (nombre) DO NOTHING;
+  ('UNIDAD', 'und'), ('GRAMOS', 'g'), ('MILILITROS', 'ml'),
+  ('KILOGRAMOS', 'kg'), ('LITROS', 'L')
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS metodos_pago (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nombre TEXT NOT NULL UNIQUE
+  nombre TEXT NOT NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS ux_metodos_pago_nombre ON metodos_pago (UPPER(nombre));
 INSERT INTO metodos_pago (nombre) VALUES
-  ('Efectivo'), ('Transferencia'), ('Tarjeta'), ('Nequi'), ('Daviplata')
-ON CONFLICT (nombre) DO NOTHING;
+  ('EFECTIVO'), ('TRANSFERENCIA'), ('TARJETA'), ('NEQUI'), ('DAVIPLATA')
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS tipos_tercero (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nombre TEXT NOT NULL UNIQUE
+  nombre TEXT NOT NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS ux_tipos_tercero_nombre ON tipos_tercero (UPPER(nombre));
 INSERT INTO tipos_tercero (nombre) VALUES
-  ('Proveedor'), ('Empleado'), ('Empresa de servicios')
-ON CONFLICT (nombre) DO NOTHING;
+  ('PROVEEDOR'), ('EMPLEADO'), ('EMPRESA DE SERVICIOS')
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS gerencias (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nombre TEXT NOT NULL UNIQUE
+  nombre TEXT NOT NULL
 );
-INSERT INTO gerencias (nombre) VALUES ('Deportiva'), ('Administrativa')
-ON CONFLICT (nombre) DO NOTHING;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_gerencias_nombre ON gerencias (UPPER(nombre));
+INSERT INTO gerencias (nombre) VALUES ('DEPORTIVA'), ('ADMINISTRATIVA')
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS tipos_gasto (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nombre TEXT NOT NULL UNIQUE
+  nombre TEXT NOT NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS ux_tipos_gasto_nombre ON tipos_gasto (UPPER(nombre));
 INSERT INTO tipos_gasto (nombre) VALUES
-  ('Nómina'), ('Gastos generales'), ('Gastos fijos')
-ON CONFLICT (nombre) DO NOTHING;
+  ('NOMINA'), ('GASTOS GENERALES'), ('GASTOS FIJOS')
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS categorias_gasto (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nombre TEXT NOT NULL UNIQUE,
+  nombre TEXT NOT NULL,
   descripcion TEXT
 );
+CREATE UNIQUE INDEX IF NOT EXISTS ux_categorias_gasto_nombre ON categorias_gasto (UPPER(nombre));
 INSERT INTO categorias_gasto (nombre, descripcion) VALUES
-  ('Arriendo', 'Pago mensual del local'),
-  ('Servicios públicos', 'Agua, luz, internet, gas'),
-  ('Insumos', 'Productos de aseo, toallas, etc'),
-  ('Mantenimiento', 'Reparación de equipos y local'),
-  ('Marketing', 'Publicidad, redes sociales, volantes'),
-  ('Nómina entrenadores', 'Pagos a entrenadores'),
-  ('Nómina administrativos', 'Pagos a personal administrativo'),
-  ('Otros', 'Gastos no clasificados')
-ON CONFLICT (nombre) DO NOTHING;
+  ('ARRIENDO', 'Pago mensual del local'),
+  ('SERVICIOS PUBLICOS', 'Agua, luz, internet, gas'),
+  ('INSUMOS', 'Productos de aseo, toallas, etc'),
+  ('MANTENIMIENTO', 'Reparación de equipos y local'),
+  ('MARKETING', 'Publicidad, redes sociales, volantes'),
+  ('NOMINA ENTRENADORES', 'Pagos a entrenadores'),
+  ('NOMINA ADMINISTRATIVOS', 'Pagos a personal administrativo'),
+  ('OTROS', 'Gastos no clasificados')
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS variantes_producto (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  nombre TEXT NOT NULL UNIQUE
+  nombre TEXT NOT NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS ux_variantes_producto_nombre ON variantes_producto (UPPER(nombre));
 INSERT INTO variantes_producto (nombre) VALUES
-  ('Vainilla'), ('Chocolate'), ('Cookies & Cream'),
-  ('Chocolate Peanut Butter'), ('Fresa'), ('Sin sabor'), ('NA')
-ON CONFLICT (nombre) DO NOTHING;
+  ('VAINILLA'), ('CHOCOLATE'), ('COOKIES & CREAM'),
+  ('CHOCOLATE PEANUT BUTTER'), ('FRESA'), ('SIN SABOR'), ('NA')
+ON CONFLICT (UPPER(nombre)) DO NOTHING;
 
 -- ── Usuarios del sistema y auditoría ─────────────────────
 CREATE TABLE IF NOT EXISTS usuarios_sistema (
