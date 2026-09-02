@@ -289,6 +289,10 @@ export default function Ventas() {
     setItems(items.map((item, i) => (i === index ? { ...item, cantidad } : item)));
   };
   const totalVenta = items.reduce((sum, i) => sum + i.precio_unitario * i.cantidad, 0);
+  // Planes vendibles: se excluyen los de cortesía (precio 0). Una semana de
+  // cortesía NO es una venta (no hay ingreso); se otorga desde la ficha del
+  // cliente ("Dar semana de cortesía") y se registra solo como suscripción.
+  const planesVendibles = planes.filter((p) => p.precio > 0);
 
   const registrarVenta = async () => {
     setError('');
@@ -873,7 +877,7 @@ export default function Ventas() {
                   </option>
                 ))}
             </select>
-            {planes.length > 0 && (
+            {planesVendibles.length > 0 && (
               <>
                 <h3 className="text-sm font-medium mb-2 mt-3">Agregar plan</h3>
                 <select
@@ -884,7 +888,7 @@ export default function Ventas() {
                   className="w-full rounded-lg px-3 py-2 text-sm neu-pressed outline-none"
                 >
                   <option value="">-- Seleccionar plan --</option>
-                  {planes.map((p) => (
+                  {planesVendibles.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.nombre} ({p.modalidad}, {p.duracion_dias} días) — {formatCOP(p.precio)}
                     </option>

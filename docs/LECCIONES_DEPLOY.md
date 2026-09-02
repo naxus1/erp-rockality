@@ -321,6 +321,30 @@ sqlite_master`; si lanza "not a database/malformed/disk I/O", el archivo
   app), y recordar que cambiar la obligatoriedad de una columna existente
   requiere `ALTER`, no basta editar el `CREATE TABLE`.
 
+### 18. La semana de cortesía NO es una venta (registrar sin generar ingreso)
+
+- **Contexto**: la "Semana cortesía" es un plan con `precio = 0`. Aparecía en el
+  selector de planes de la pantalla de Ventas, así que se podía "vender" como
+  ítem de una venta de $0 → generaba una venta y una suscripción atada a esa
+  venta, ensuciando los reportes de ingresos con algo que no es un ingreso.
+- **Decisión**: una cortesía se otorga desde la ficha del cliente ("Dar semana de
+  cortesía", `POST /planes/suscripciones`) y se registra SOLO como suscripción
+  (`venta_id = NULL`, `monto_pagado = 0`). NO debe poder venderse.
+- **Implementación (defensa en profundidad)**:
+  - Frontend (Ventas): el selector solo muestra `planesVendibles` = planes con
+    `precio > 0` (excluye cortesía).
+  - Backend (`ventas.repository.create`): si un ítem de plan tiene `precio = 0`,
+    lanza error → la ruta responde 400. Así no entra por la API aunque se salte
+    la UI.
+- **Reporte de cortesías** (`GET /api/reportes/cortesias`): total, desglose por
+  mes/año (`to_char(created_at, 'YYYY-MM' / 'YYYY')`), y "convertidos" =
+  prospectos que tuvieron cortesía y luego hicieron una venta real (no anulada,
+  `total > 0`), con su tasa de conversión. Una cortesía se identifica por el join
+  a `planes` con `precio = 0`.
+- **Recomendación**: distinguir desde el diseño lo que es ingreso (venta) de lo
+  que es promoción/beneficio (cortesía). No modelar "regalos" como ventas de $0;
+  registrarlos por su propio flujo y medir su conversión aparte.
+
 ### (operativo) Docker Desktop se pausa durante los builds
 
 - **Síntoma**: `sam build --use-container` falla intermitentemente con "requires a

@@ -32,6 +32,20 @@ interface ApiResponse<T> {
   success: boolean;
   data: T;
 }
+interface ReporteCortesias {
+  total: number;
+  clientes_con_cortesia: number;
+  convertidos: number;
+  tasa_conversion: number;
+  por_mes: Array<{ periodo: string; total: number }>;
+  por_anio: Array<{ periodo: string; total: number }>;
+  convertidos_detalle: Array<{
+    cedula: string;
+    cliente: string;
+    cortesias: number;
+    ventas: number;
+  }>;
+}
 
 function formatCOP(centavos: number): string {
   return new Intl.NumberFormat('es-CO', {
@@ -53,9 +67,13 @@ const FORM_VACIO = {
 
 export default function Planes() {
   const [searchParams] = useSearchParams();
-  const [tab, setTab] = useState<'planes' | 'suscripciones'>(
-    searchParams.get('tab') === 'suscripciones' ? 'suscripciones' : 'planes',
-  );
+  const tabInicial = (() => {
+    const t = searchParams.get('tab');
+    if (t === 'suscripciones' || t === 'cortesias') return t;
+    return 'planes';
+  })();
+  const [tab, setTab] = useState<'planes' | 'suscripciones' | 'cortesias'>(tabInicial);
+  const [cortesias, setCortesias] = useState<ReporteCortesias | null>(null);
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [suscripciones, setSuscripciones] = useState<Suscripcion[]>([]);
@@ -95,9 +113,19 @@ export default function Planes() {
     }
   };
 
+  const cargarCortesias = async () => {
+    try {
+      const res = await api.get<ApiResponse<ReporteCortesias>>('/reportes/cortesias');
+      setCortesias(res.data);
+    } catch {
+      /* */
+    }
+  };
+
   useEffect(() => {
     cargarPlanes();
     cargarSuscripciones();
+    cargarCortesias();
   }, []);
 
   const abrirCrear = () => {
@@ -217,6 +245,13 @@ export default function Planes() {
           title="Ver las suscripciones activas"
         >
           Suscripciones activas ({suscripciones.length})
+        </button>
+        <button
+          onClick={() => setTab('cortesias')}
+          className={`pb-2 text-sm font-medium ${tab === 'cortesias' ? 'border-b-2 border-gray-900 text-gray-900' : 'text-gray-500'}`}
+          title="Reporte de semanas de cortesía"
+        >
+          Cortesías{cortesias ? ` (${cortesias.total})` : ''}
         </button>
       </div>
 
@@ -512,6 +547,133 @@ export default function Planes() {
                         {s.dias_restantes}
                       </td>
                       <td className="px-3 py-2 text-right">{formatCOP(s.monto_pagado)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB CORTESÍAS */}
+      {tab === 'cortesias' && (
+        <div>
+          <p className="text-xs text-gray-500 mb-4">
+            Las semanas de cortesía se otorgan desde la ficha del cliente y NO son ventas (no hay
+            ingreso). Aquí se cuentan y se ve cuántos prospectos terminaron comprando.
+          </p>
+
+          {/* KPIs */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div className="rounded-xl neu-flat p-4">
+              <span className="block text-xs text-gray-500">Total cortesías</span>
+              <span className="text-2xl font-bold">{cortesias?.total ?? 0}</span>
+            </div>
+            <div className="rounded-xl neu-flat p-4">
+              <span className="block text-xs text-gray-500">Prospectos</span>
+              <span className="text-2xl font-bold">{cortesias?.clientes_con_cortesia ?? 0}</span>
+            </div>
+            <div className="rounded-xl neu-flat p-4">
+              <span className="block text-xs text-gray-500">Convertidos</span>
+              <span className="text-2xl font-bold text-green-600">
+                {cortesias?.convertidos ?? 0}
+              </span>
+            </div>
+            <div className="rounded-xl neu-flat p-4">
+              <span className="block text-xs text-gray-500">Tasa conversión</span>
+              <span className="text-2xl font-bold">{cortesias?.tasa_conversion ?? 0}%</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Por mes */}
+            <div className="rounded-xl neu-flat overflow-auto">
+              <h3 className="text-sm font-medium px-3 pt-3">Por mes</h3>
+              <table className="w-full text-sm mt-1">
+                <thead className="text-left text-gray-500">
+                  <tr>
+                    <th className="px-3 py-2">Mes</th>
+                    <th className="px-3 py-2 text-right">Cortesías</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {!cortesias || cortesias.por_mes.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} className="px-3 py-4 text-center text-gray-400">
+                        Sin cortesías
+                      </td>
+                    </tr>
+                  ) : (
+                    cortesias.por_mes.map((m) => (
+                      <tr key={m.periodo} className="border-t border-gray-100">
+                        <td className="px-3 py-2">{m.periodo}</td>
+                        <td className="px-3 py-2 text-right font-medium">{m.total}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Por año */}
+            <div className="rounded-xl neu-flat overflow-auto">
+              <h3 className="text-sm font-medium px-3 pt-3">Por año</h3>
+              <table className="w-full text-sm mt-1">
+                <thead className="text-left text-gray-500">
+                  <tr>
+                    <th className="px-3 py-2">Año</th>
+                    <th className="px-3 py-2 text-right">Cortesías</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {!cortesias || cortesias.por_anio.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} className="px-3 py-4 text-center text-gray-400">
+                        Sin cortesías
+                      </td>
+                    </tr>
+                  ) : (
+                    cortesias.por_anio.map((a) => (
+                      <tr key={a.periodo} className="border-t border-gray-100">
+                        <td className="px-3 py-2">{a.periodo}</td>
+                        <td className="px-3 py-2 text-right font-medium">{a.total}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Convertidos */}
+          <div className="rounded-xl neu-flat overflow-auto mt-4">
+            <h3 className="text-sm font-medium px-3 pt-3">
+              Convertidos (tuvieron cortesía y luego compraron)
+            </h3>
+            <table className="w-full text-sm mt-1">
+              <thead className="text-left text-gray-500">
+                <tr>
+                  <th className="px-3 py-2">Cliente</th>
+                  <th className="px-3 py-2 text-right">Cortesías</th>
+                  <th className="px-3 py-2 text-right">Ventas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!cortesias || cortesias.convertidos_detalle.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-3 py-4 text-center text-gray-400">
+                      Aún nadie con cortesía ha comprado
+                    </td>
+                  </tr>
+                ) : (
+                  cortesias.convertidos_detalle.map((d) => (
+                    <tr key={d.cedula} className="border-t border-gray-100">
+                      <td className="px-3 py-2">{d.cliente}</td>
+                      <td className="px-3 py-2 text-right">{d.cortesias}</td>
+                      <td className="px-3 py-2 text-right font-medium text-green-600">
+                        {d.ventas}
+                      </td>
                     </tr>
                   ))
                 )}
